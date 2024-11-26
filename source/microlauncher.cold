@@ -1,0 +1,210 @@
+
+/*! microlauncher.cold
+
+MIT License
+
+Copyright (C) 2024 Stefanos "Steven" Tsakiris
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. */
+
+/*!includes:{*/
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include <string.h>
+	#include <xcb/xcb.h>
+	#include <xcb/xcb_keysyms.h>
+	#include <xcb/xproto.h>
+	#include <X11/Xlib.h>
+	#include <X11/Xlib-xcb.h>
+	#include <X11/Xlocale.h>
+	#include <X11/Xresource.h>
+	#include <X11/Xutil.h>
+	#include "cold/cold.hold"
+/*!}*/
+
+/*!defines:{*/
+	#define KEYPRESSXCBTOXLIB() /*-*/ local XEvent keyPressXcbToXlib(xcb_key_press_event_t *const e)
+/*!}*/
+
+/*!globals:{*/
+	local int /*-------------------*/ screenNumber;
+	local xcb_connection_t * /*----*/ connection;
+	local xcb_screen_t * /*--------*/ screen;
+	local Display * /*-------------*/ display;
+	local xcb_generic_event_t * /*-*/ event0;
+	local XEvent /*----------------*/ event1;
+	local XIM /*-------------------*/ im;
+	local XIC /*-------------------*/ ic;
+/*!}*/
+
+/*!functions:{*/
+	KEYPRESSXCBTOXLIB();
+/*!}*/
+
+int main(void){
+	event0 = NULL;
+	jmp establishServerConnection;
+	establishServerConnection:{
+		screenNumber = 0;
+		connection = xcb_connect_to_display_with_auth_info("", NULL, &screenNumber);
+		screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data + screenNumber;
+		if(xcb_connection_has_error(connection)){
+			ret 0;
+		}
+		jmp establishDualServerConnection;
+	}
+	establishDualServerConnection:{
+		xcb_disconnect(connection);
+		if(!(display = XOpenDisplay(NULL))){
+			ret 0;
+		}
+		if(!(connection = XGetXCBConnection(display))){
+			ret 0;
+		}
+		screenNumber = DefaultScreen(display);
+		screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data + screenNumber;
+		XSetEventQueueOwner(display, XCBOwnsEventQueue);
+		jmp fixInput;
+	}
+	fixInput:{
+		if(!setlocale(LC_ALL, "")){
+			ret 0;
+		}
+		if(!XSupportsLocale()){
+			ret 0;
+		}
+		if(!(im = XOpenIM(display, NULL, NULL, NULL))){
+			ret 0;
+		}
+		if(!(ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, (*screen).root, NULL))){
+			ret 0;
+		}
+		jmp selectInput;
+	}
+	selectInput:{
+		const uint32 valueList = XCB_EVENT_MASK_KEY_PRESS;
+		xcb_change_window_attributes(connection, (*screen).root, XCB_CW_EVENT_MASK, &valueList);
+		jmp real;
+	}
+	real:{
+		xcb_grab_keyboard(connection, true, (*screen).root, XCB_CURRENT_TIME, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+		jmp eventLoop0;
+	}
+
+
+
+
+
+
+
+
+
+	eventLoop0:{
+		xcb_flush(connection);
+		free(event0);
+		if((event0 = xcb_wait_for_event(connection))){
+			jmp switchEvent0;
+		}
+		jmp eventLoop0;
+	}
+	switchEvent0: switch (*event0).response_type & ~b(10000000) over
+		to XCB_KEY_PRESS:{
+			#define e /*-*/ ((xcb_key_press_event_t *)event0)
+			char buffer[4];
+			int count;
+			XEvent keyEvent;
+			if((*e).detail == 9){
+				jmp emergencyExit;
+			}
+			keyEvent = keyPressXcbToXlib(e);
+			if(XFilterEvent(&keyEvent, (*screen).root)){
+				XSetEventQueueOwner(display, XlibOwnsEventQueue);
+				jmp eventLoop1;
+				eventLoop1:{
+					if(XPending(display)){
+						XNextEvent(display, &event1);
+						jmp switchEvent1;
+					}
+					event1.type = NoEventMask;
+					jmp switchEvent1;
+				}
+				switchEvent1: switch event1.type over
+					to KeyPress:{
+						char buffer[4];
+						int count;
+						if(event1.xkey.keycode == 9){
+							jmp emergencyExit;
+						}
+						if(XFilterEvent(&event1, (*screen).root)){
+							jmp eventLoop1;
+						}
+						count = Xutf8LookupString(ic, &event1.xkey, buffer, sizeof(buffer), NULL, NULL);
+						fprintf(stdout, "xlib buffer: %.*s\n", count? count : 4, count? buffer : "none");
+						jmp eventLoop1;
+					}
+					off:{
+						XSetEventQueueOwner(display, XCBOwnsEventQueue);
+						jmp eventLoop0;
+					}
+				end
+			}
+			count = Xutf8LookupString(ic, &keyEvent.xkey, buffer, sizeof(buffer), NULL, NULL);
+			fprintf(stdout, " xcb buffer: %.*s\n", count? count : 4, count? buffer : "none");
+			jmp eventLoop0;
+			#undef  e
+		}
+		off:{
+			jmp eventLoop0;
+		}
+	end
+
+
+
+
+
+
+
+
+
+	emergencyExit:{
+		xcb_ungrab_keyboard(connection, XCB_CURRENT_TIME);
+		XDestroyIC(ic);
+		XCloseIM(im);
+		XCloseDisplay(display);
+		ret 0;
+	}
+}
+KEYPRESSXCBTOXLIB(){
+	XEvent keyEvent;
+	keyEvent.xkey.type = (*e).response_type & ~b(10000000);
+	keyEvent.xkey.send_event = false;
+	keyEvent.xkey.display = display;
+	keyEvent.xkey.window = (*e).event;
+	keyEvent.xkey.root = (*e).root;
+	keyEvent.xkey.subwindow = (*e).child;
+	keyEvent.xkey.time = (*e).time;
+	keyEvent.xkey.x = (*e).event_x;
+	keyEvent.xkey.y = (*e).event_y;
+	keyEvent.xkey.x_root = (*e).root_x;
+	keyEvent.xkey.y_root = (*e).root_y;
+	keyEvent.xkey.state = (*e).state;
+	keyEvent.xkey.keycode = (*e).detail;
+	keyEvent.xkey.same_screen = (*e).same_screen;
+	ret keyEvent;
+}
