@@ -803,6 +803,9 @@ SOFTWARE. */
 
 
 
+uint8 inputForeheadStart[4096];
+uint8 *inputForeheadCurrent = inputForeheadStart;
+
 #define RANDRQUERYVERSIONUNCHECKED() /*--*/ local xcb_void_cookie_t  randrQueryVersionUnchecked(xcb_connection_t *const connection, const uint32 majorVersion, const uint32 minorVersion)
 
 RANDRQUERYVERSIONUNCHECKED();
@@ -821,35 +824,6 @@ RANDRQUERYVERSIONUNCHECKED(){
 
 
 
-#ifdef a
-#define DRAWWINDOW() /*-*/ local void drawWindow(void)
-
-local xcb_window_t /*---*/ window;
-local xcb_pixmap_t /*---*/ pixmap;
-local xcb_gcontext_t /*-*/ gc;
-
-DRAWWINDOW();
-
-DRAWWINDOW(){
-
-
-
-	/*!*/
-
-
-
-	ret;
-}
-#endif
-
-
-
-
-
-
-
-
-
 #define NONE_ASCII_STRING_NODE /*--------*/ (0)
 #define COMPLETE_ASCII_STRING_NODE /*----*/ (1)
 #define INCOMPLETE_ASCII_STRING_NODE /*--*/ (2)
@@ -857,11 +831,11 @@ DRAWWINDOW(){
 #define SETASCIISTRINGROOT() /*----------*/ local void   setASCIIStringRoot(ASCIIStringNodeRoot *const root)
 #define ISASCIISTRING() /*---------------*/ local bool   isASCIIString(const void *string)
 #define INSERTASCIISTRING() /*-----------*/ local bool   insertASCIIString(ASCIIStringNodeRoot *const root, const char *string)
-#define GETASCIISTRINGNODE() /*----------*/ local uint8  getASCIIStringNode(ASCIIStringNodeRoot *const root, const char **const stringReturn, ASCIIStringNode **nodeReturn)
+#define GETASCIISTRINGNODE() /*----------*/ local uint8  getASCIIStringNode(ASCIIStringNodeRoot *const root, const bool findExact, const char **const stringReturn, ASCIIStringNode **nodeReturn)
 #define GETMULTIPLEASCIISTRINGNODES() /*-*/ local void   getMultipleASCIIStringNodes(ASCIIStringNodeRoot *const root, const uint amount, const char *prefix)
 #define DELETEASCIISTRINGROOT() /*-------*/ local void   deleteASCIIStringRoot(ASCIIStringNodeRoot *const root)
 
-#define findASCIIString(a, b) /*---------*/ (getASCIIStringNode(a, b, NULL) == COMPLETE_ASCII_STRING_NODE)
+#define findASCIIString(a, b) /*---------*/ (getASCIIStringNode(a, true, b, NULL) == COMPLETE_ASCII_STRING_NODE)
 
 def struct{
 	uint8 /*-------------*/ letter;
@@ -914,7 +888,7 @@ INSERTASCIISTRING(){
 	uint allocated = (*root).dataAllocated;
 	uint size = (*root).dataSize;
 	jmp getNode;
-	getNode: switch getASCIIStringNode(root, &string, &node) over
+	getNode: switch getASCIIStringNode(root, false, &string, &node) over
 		to COMPLETE_ASCII_STRING_NODE: /*---*/ ret false;
 		to INCOMPLETE_ASCII_STRING_NODE: /*-*/ jmp insertNodeLoop;
 		off: /*-----------------------------*/ ret false;
@@ -960,13 +934,6 @@ INSERTASCIISTRING(){
 	}
 }
 GETASCIISTRINGNODE(){
-
-
-
-	/*! optimize how children are found (the null pointers to children discrepancy). */
-
-
-
 	const uint32 *childOffsetCurrent;
 	const uint32 *childOffsetWall;
 	const char *string = *stringReturn;
@@ -1004,7 +971,7 @@ GETASCIISTRINGNODE(){
 				inc string;
 				jmp getChildNode;
 			}
-			if((*child).letter == b(10000000) and !c){
+			if(!c and (*child).letter == b(10000000)){
 				*stringReturn = string;
 				if(nodeReturn){
 					*nodeReturn = node;
@@ -1015,6 +982,9 @@ GETASCIISTRINGNODE(){
 				inc childOffsetCurrent;
 				jmp findChildNodeLoop;
 			}
+		}
+		if(findExact and c){
+			ret NONE_ASCII_STRING_NODE;
 		}
 		*stringReturn = string;
 		if(nodeReturn){
@@ -1033,6 +1003,17 @@ GETASCIISTRINGNODE(){
 
 
 GETMULTIPLEASCIISTRINGNODES(){
+
+
+
+	/*!
+		support getting the first n results and then the second n results and then the kth n results.
+
+		should probably use an offset member in root.
+	*/
+
+
+
 	const uint32 *childOffsetCurrent;
 	const char *string = prefix;
 
@@ -1044,11 +1025,7 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 
 
-	/*! what if we try to set a count to the root, or even before that? */
-
-
-
-	ASCIIStringNode *data = (*root).dataStart;
+	ASCIIStringNode *const data = (*root).dataStart;
 	ASCIIStringNode *node = data;
 	ASCIIStringNode *lastPrefixNode;
 
@@ -1061,7 +1038,7 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 
 	jmp getNode;
-	getNode: switch getASCIIStringNode(root, &string, &node) over
+	getNode: switch getASCIIStringNode(root, true, &string, &node) over
 		to COMPLETE_ASCII_STRING_NODE: /*---*/ jmp prefixFound;
 		to INCOMPLETE_ASCII_STRING_NODE: /*-*/ jmp prefixFound;
 		off: /*-----------------------------*/ jmp emergencyExit;
@@ -1074,15 +1051,19 @@ GETMULTIPLEASCIISTRINGNODES(){
 			(*(data + (*node).parentOffset)).counter = countof((*node).childOffset);
 		}
 		(*node).counter = 0;
-		childOffsetCurrent = (*node).childOffset + (*node).counter;
+		childOffsetCurrent = (*node).childOffset;
 
 
 
-		fprintf(stdout, "prefix found: \"%s\"\n", prefix);
+		/*! right node? maybe should be parent of node? */
+
 		lastPrefixNode = node;
+
+
+
 		jmp prefixFoundLoop;
 		prefixFoundLoop:{
-			if(prefix){
+			if(*prefix){
 				*foreCurrent = *prefix;
 				inc foreCurrent;
 				inc prefix;
@@ -1096,6 +1077,13 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 
 	newNextLetterLoop:{
+
+
+
+		/*! endless loop can happen here */
+
+
+
 		if(childOffsetCurrent < (*node).childOffset + countof((*node).childOffset)){
 			if(!*childOffsetCurrent){
 				inc childOffsetCurrent;
@@ -1130,7 +1118,7 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 					*foreCurrent = '\0';
 					dec foreCurrent;
-					fprintf(stdout, "\t%u: %s\n", foundStringCounter, foreStart);
+					fprintf(stdout, "%s ", foreStart);
 
 
 
@@ -1185,7 +1173,9 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 
 
-		fprintf(stdout, "found %u\n", foundStringCounter);
+/*!
+		fprintf(stdout, "\nfound %u\n", foundStringCounter);
+*/
 
 
 
@@ -1207,119 +1197,46 @@ DELETEASCIISTRINGROOT(){
 
 
 
-int main(int argumentAmount, const char *const *argument){
+#define BACKSPACE() /*-*/ local void backspace(void)
+#define DRAWTEXT() /*--*/ local void drawText(void)
 
+local ASCIIStringNodeRoot /*-*/ asciiRoot;
+local uint8 * /*-------------*/ utf8StringStart;
+local uint32 /*--------------*/ utf8StringToken;
 
+BACKSPACE();
+DRAWTEXT();
 
-
-
-
-
-
-
-	{
-		char *pathStart = getenv("PATH");
-
-
-
-		ASCIIStringNodeRoot asciiRoot;
-		setASCIIStringRoot(&asciiRoot);
-
-
-
-		fprintf(stdout, "\n\n\n");
-		if(pathStart and *pathStart){
-			char *pathCurrent = pathStart;
-			uint i = 1;
-			jmp printPathNameLoop;
-			printPathNameLoop:{
-				DIR *dir;
-				char lastChar;
-				if(*pathCurrent != ':' and *pathCurrent != '\0'){
-					inc pathCurrent;
-					jmp printPathNameLoop;
-				}
-				lastChar = *(pathStart + (pathCurrent - pathStart));
-				*(pathStart + (pathCurrent - pathStart)) = '\0';
-				fprintf(stdout, "path %u: %s\n", i, pathStart);
-
-
-
-				dir = opendir(pathStart);
-				if(dir){;
-					jmp printDirectoryNameLoop;
-					printDirectoryNameLoop:{
-						struct dirent *entry;
-						if((entry = readdir(dir))){
-							const char *const name = (*entry).d_name;
-							if(!(*name == '.' and (*(name + 1) == '\0' or (*(name + 1) == '.' and *(name + 2) == '\0')))){
-								const bool isAscii = isASCIIString(name);
-#ifdef a
-								const unsigned char type = (*entry).d_type;
-								char *typeName;
-								switch type over
-									to DT_BLK: /*--*/ typeName = "block device"; /*-----*/ brk;
-									to DT_CHR: /*--*/ typeName = "character device"; /*-*/ brk;
-									to DT_DIR: /*--*/ typeName = "directory"; /*--------*/ brk;
-									to DT_FIFO: /*-*/ typeName = "fifo"; /*-------------*/ brk;
-									to DT_LNK: /*--*/ typeName = "symbolic link"; /*----*/ brk;
-									to DT_REG: /*--*/ typeName = "regular file"; /*-----*/ brk;
-									to DT_SOCK: /*-*/ typeName = "socket"; /*-----------*/ brk;
-									off: /*--------*/ typeName = "unknown"; /*----------*/ brk;
-								end
-								fprintf(stdout, "%-49s (%s, %s)\n", name, typeName, isAscii? "ascii" : "non-ascii");
-#endif
-								if(isAscii){
-									const char *n = name;
-									if(!insertASCIIString(&asciiRoot, n)){
-										fprintf(stdout, "\t%s not put\n", name);
-									}
-									n = name;
-									if(!findASCIIString(&asciiRoot, &n)){
-										fprintf(stdout, "\t%s not found\n", name);
-									}
-								}else{
-									fprintf(stdout, "\tgotta add to non-ascii list\n");
-								}
-							}
-							jmp printDirectoryNameLoop;
-						}
-						closedir(dir);
-					}
-				}
-				fprintf(stdout, "\n");
-				*(pathStart + (pathCurrent - pathStart)) = lastChar;
-				if(*pathCurrent == ':'){
-					inc pathCurrent;
-				}
-				if(*pathCurrent){
-					inc i;
-					pathStart = pathCurrent;
-					jmp printPathNameLoop;
-				}
-			}
-		}
-
-
-
-
-
-
-
-
-
-		getMultipleASCIIStringNodes(&asciiRoot, 256, "");
-
-
-
-
-
-
-
-
-
-		deleteASCIIStringRoot(&asciiRoot);
+BACKSPACE(){
+	if(inputForeheadCurrent == inputForeheadStart){
+		ret;
 	}
+	dec inputForeheadCurrent;
+	if(*inputForeheadCurrent < b(10000000)){
+		ret;
+	}
+	if(*inputForeheadCurrent < b(11000000)){
+		dec inputForeheadCurrent;
+	}
+	if(*inputForeheadCurrent < b(11000000)){
+		dec inputForeheadCurrent;
+	}
+	if(*inputForeheadCurrent < b(11000000)){
+		dec inputForeheadCurrent;
+	}
+	if(*inputForeheadCurrent < b(11111000) or *inputForeheadCurrent < b(11110000) or *inputForeheadCurrent < b(11100000)){
+		dec inputForeheadCurrent;
+	}
+	inc inputForeheadCurrent;
+	ret;
+}
+DRAWTEXT(){
+	*inputForeheadCurrent = '\0';
+	fprintf(stdout, "| %s: ", inputForeheadStart);
+	getMultipleASCIIStringNodes(&asciiRoot, 10, (void *)inputForeheadStart);
+	fprintf(stdout, "\n");
+	ret;
+}
 
 
 
@@ -1329,6 +1246,7 @@ int main(int argumentAmount, const char *const *argument){
 
 
 
+int main(int argumentAmount, const char *const *argument){
 	(void)setMemory;
 	(void)copyMemory;
 	(void)findStringLength;
@@ -1391,6 +1309,14 @@ int main(int argumentAmount, const char *const *argument){
 		buttonReleaseNextOffset /*-*/ = 0;
 		event /*-------------------*/ = NULL;
 		eventToken /*--------------*/ = 0;
+
+
+
+		utf8StringStart /*---------*/ = NULL;
+		utf8StringToken /*---------*/ = 0;
+
+
+
 		setConfigVariables();
 		initMemoryManager();
 		shmInit();
@@ -1404,6 +1330,7 @@ int main(int argumentAmount, const char *const *argument){
 		setStringRoot(&macroRoot);
 		setShortcutRoot(&keycodeShortcut);
 		setShortcutRoot(&buttonShortcut);
+		setASCIIStringRoot(&asciiRoot);
 		{
 			pthread_rwlockattr_t attributes;
 			if(pthread_rwlockattr_init(&attributes) != PTHREAD_RWLOCKATTR_INIT_SUCCESS){
@@ -2096,6 +2023,122 @@ int main(int argumentAmount, const char *const *argument){
 		bulkInsertString(&variableRoot, variableList);
 		bulkInsertString(&modifierRoot, modifierList);
 		bulkInsertString(&macroRoot, macroList);
+
+
+
+
+
+
+
+
+
+		jmp storeExecutables;
+		storeExecutables:{
+			#define UTF8_STRING_BLOCK_SIZE /*-*/ (16)
+			char *pathStart = getenv("PATH");
+			if(pathStart and *pathStart){
+				char *pathCurrent = pathStart;
+				uint i = 1;
+				utf8StringStart = malloc(UTF8_STRING_BLOCK_SIZE * sizeof(uint8));
+				utf8StringToken = pushPointer(utf8StringStart, "utf-8 executables string pointer", iFree);
+				jmp getPathNameLoop;
+				getPathNameLoop:{
+
+
+
+
+
+
+
+
+
+					DIR *dir;
+					uint32 dirToken;
+					char lastChar;
+					if(*pathCurrent != ':' and *pathCurrent != '\0'){
+						inc pathCurrent;
+						jmp getPathNameLoop;
+					}
+					lastChar = *pathCurrent;
+					*pathCurrent = '\0';
+					fprintf(stdout, "path %u: %s\n", i, pathStart);
+
+
+
+					dir = opendir(pathStart);
+					dirToken = pushPointer(pathStart, "executable path pointer", closedir);
+					if(dir){
+						jmp storeDirectoryNameLoop;
+						storeDirectoryNameLoop:{
+							struct dirent *entry;
+							if((entry = readdir(dir))){
+								const char *const name = (*entry).d_name;
+								if(*name == '.' and (*(name + 1) == '\0' or (*(name + 1) == '.' and *(name + 2) == '\0'))){
+									jmp storeDirectoryNameLoop;
+								}
+								if((*entry).d_type != DT_LNK and (*entry).d_type != DT_REG){
+									jmp storeDirectoryNameLoop;
+								}
+								if(isASCIIString(name)){
+									const char *n = name;
+									if(!insertASCIIString(&asciiRoot, n)){
+										fprintf(stdout, "\t%s not put\n", name);
+									}
+									n = name;
+									if(!findASCIIString(&asciiRoot, &n)){
+										fprintf(stdout, "\t%s not found\n", name);
+									}
+									jmp storeDirectoryNameLoop;
+								}
+								fprintf(stdout, "\tgotta add to non-ascii list\n");
+
+
+
+								/*!*/
+
+
+
+								jmp storeDirectoryNameLoop;
+							}
+							closedir(dir);
+							popPointer(dirToken);
+						}
+					}
+
+
+
+					fprintf(stdout, "\n");
+					*pathCurrent = lastChar;
+					if(*pathCurrent == ':'){
+						inc pathCurrent;
+					}
+					if(*pathCurrent){
+						inc i;
+						pathStart = pathCurrent;
+						jmp getPathNameLoop;
+					}
+
+
+
+
+
+
+
+
+
+				}
+			}
+			#undef  UTF8_STRING_BLOCK_SIZE
+		}
+
+
+
+
+
+
+
+
+
 		jmp readConfig;
 	}
 	readConfig:{
@@ -2109,8 +2152,30 @@ int main(int argumentAmount, const char *const *argument){
 		if(globalsLockCreated and pthread_rwlock_unlock(&globalsLock) != PTHREAD_RWLOCK_UNLOCK_SUCCESS){
 			printTitledError("pthread error", "could not unlock globals write lock");
 		}
+		jmp getThing;
+	}
+
+
+
+
+
+
+
+
+
+	getThing:{
+		drawText();
 		jmp eventLoopCheckShortcuts;
 	}
+
+
+
+
+
+
+
+
+
 	eventLoopCheckShortcuts:{
 		if(keyPressNextOffset){
 			jmp keyPressEvent;
@@ -2148,7 +2213,9 @@ int main(int argumentAmount, const char *const *argument){
 	}
 	switchEvent:{
 		#define XCB_ONE /*-*/ (1)
+/*!
 		printXEvent(eventName);
+*/
 		switch (*event).response_type & ~b(10000000) over
 			to XCB_NONE: /*--------------*/ jmp errorEvent;
 			to XCB_ONE: /*---------------*/ jmp unrecognizedEvent;
@@ -2212,8 +2279,13 @@ int main(int argumentAmount, const char *const *argument){
 
 
 		/*!*/
-			if((*e).detail == 9){
+			if((*e).detail == 9){ /*! ESC */
 				jmp mainEmergencyExit;
+			}
+			if((*e).detail == 22){ /*! BS */
+				backspace();
+				drawText();
+				jmp eventLoop;
 			}
 			xlibEvent.xkey.type = (*e).response_type & ~b(10000000);
 			xlibEvent.xkey.send_event = false;
@@ -2230,10 +2302,22 @@ int main(int argumentAmount, const char *const *argument){
 			xlibEvent.xkey.keycode = (*e).detail;
 			xlibEvent.xkey.same_screen = (*e).same_screen;
 			if(!XFilterEvent(&xlibEvent, (*screen).root)){
-				char buffer[4];
-				int count = Xutf8LookupString(ic, &xlibEvent.xkey, buffer, sizeof(buffer), NULL, NULL);
+				uint8 buffer[4];
+				int count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL);
 				if(count){
-					fprintf(stdout, " xcb buffer: %.*s\n", count, buffer);
+					/*! fprintf(stdout, " xcb buffer: %u %.*s\n", count, count, buffer); */
+
+
+
+					*(inputForeheadCurrent + 0) = *(buffer + 0);
+					*(inputForeheadCurrent + 1) = *(buffer + 1);
+					*(inputForeheadCurrent + 2) = *(buffer + 2);
+					*(inputForeheadCurrent + 3) = *(buffer + 3);
+					inputForeheadCurrent += count;
+					drawText();
+
+
+
 				}
 				jmp eventLoop;
 			}
@@ -2249,14 +2333,32 @@ int main(int argumentAmount, const char *const *argument){
 			}
 			switchXlibEvent: switch xlibEvent.type over
 				to KeyPress:{
-					if(xlibEvent.xkey.keycode == 9){
+					if(xlibEvent.xkey.keycode == 9){ /*! ESC */
 						jmp mainEmergencyExit;
 					}
+					if(xlibEvent.xkey.keycode == 22){ /*! BS */
+						backspace();
+						drawText();
+						jmp xlibEventLoop;
+					}
 					if(!XFilterEvent(&xlibEvent, (*screen).root)){
-						char buffer[4];
-						int count = Xutf8LookupString(ic, &xlibEvent.xkey, buffer, sizeof(buffer), NULL, NULL);
+						uint8 buffer[4];
+						int count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL);
 						if(count){
-							fprintf(stdout, "xlib buffer: %.*s\n", count, buffer);
+							/*! fprintf(stdout, "xlib buffer: %u %.*s\n", count, count, buffer); */
+
+
+
+							*(inputForeheadCurrent + 0) = *(buffer + 0);
+							*(inputForeheadCurrent + 1) = *(buffer + 1);
+							*(inputForeheadCurrent + 2) = *(buffer + 2);
+							*(inputForeheadCurrent + 3) = *(buffer + 3);
+							inputForeheadCurrent += count;
+							*(inputForeheadCurrent + 0) = '\0';
+							fprintf(stdout, "%s\n", inputForeheadStart);
+
+
+
 						}
 					}
 					jmp xlibEventLoop;
@@ -4519,7 +4621,7 @@ READCONFIG(){
 	}
 	configEmergencyExit:{
 		if(configFile and fileLine == 1 and !statementLine){
-			printConfigError("config error", "empty config file", '\0', false, false, false, false, configPath, 1, statementStart, statementWall, NULL, NULL, NULL, currentScopeInstructionList, currentScopeInstructionRoot);
+			printConfigError("config warning", "empty config file", '\0', false, false, false, false, configPath, 1, statementStart, statementWall, NULL, NULL, NULL, currentScopeInstructionList, currentScopeInstructionRoot);
 		}
 		free(statementStart);
 		popPointer(statementToken);
