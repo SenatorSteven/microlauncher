@@ -19,6 +19,14 @@
 	when reading text live, check if the text is ascii. if it isn't, change a flag. change a flag on backspace, too.
 */
 
+/*!
+	consider getting focus and closing the program on losing focus.
+*/
+
+/*!
+	silence terminal output (?) if declared.
+*/
+
 
 
 
@@ -803,9 +811,6 @@ SOFTWARE. */
 
 
 
-uint8 inputForeheadStart[4096];
-uint8 *inputForeheadCurrent = inputForeheadStart;
-
 #define RANDRQUERYVERSIONUNCHECKED() /*--*/ local xcb_void_cookie_t  randrQueryVersionUnchecked(xcb_connection_t *const connection, const uint32 majorVersion, const uint32 minorVersion)
 
 RANDRQUERYVERSIONUNCHECKED();
@@ -870,7 +875,7 @@ SETASCIISTRINGROOT(){
 		printTitledError("memory allocation error", "could not allocate memory for a ascii string tree");
 		ret;
 	}
-	setMemory((*root).dataStart, 0, DATA_BLOCK_SIZE * sizeof(ASCIIStringNode) / sizeof(uint32), sizeof(uint32));
+	setMemory((*root).dataStart, 0, DATA_BLOCK_SIZE * sizeof(ASCIIStringNode) / sizeof(uint64), sizeof(uint64));
 	ret;
 }
 ISASCIISTRING(){
@@ -912,7 +917,7 @@ INSERTASCIISTRING(){
 			}
 			data = temp;
 			node = data + nodeOffset;
-			setMemory(data + size - DATA_BLOCK_SIZE, 0, DATA_BLOCK_SIZE * sizeof(ASCIIStringNode) / sizeof(uint32), sizeof(uint32));
+			setMemory(data + size - DATA_BLOCK_SIZE, 0, DATA_BLOCK_SIZE * sizeof(ASCIIStringNode) / sizeof(uint64), sizeof(uint64));
 		}
 		c = *string;
 		parentOffset = node - data;
@@ -1197,44 +1202,432 @@ DELETEASCIISTRINGROOT(){
 
 
 
-#define BACKSPACE() /*-*/ local void backspace(void)
-#define DRAWTEXT() /*--*/ local void drawText(void)
+#define NONE_MATCH_SHORTCUT /*--------*/ (0)
+#define FOUND_MATCH_SHORTCUT /*-------*/ (1)
+#define TERMINAL_MATCH_SHORTCUT /*----*/ (2)
+
+#define GETSTRINGCHARACTERAMOUNT() /*-*/ local uint   getStringCharacterAmount(const uint8 *p)
+#define GETLEFTCHARACTERSIZE() /*-----*/ local uint   getLeftCharacterSize(const uint8 *const p)
+#define GETRIGHTCHARACTERSIZE() /*----*/ local uint   getRightCharacterSize(const uint8 *const p)
+#define REMOVESELECTED() /*-----------*/ local void   removeSelected(void)
+#define REMOVELEFT() /*---------------*/ local void   removeLeft(void)
+#define REMOVERIGHT() /*--------------*/ local void   removeRight(void)
+
+#define GOTOLEFT() /*-----------------*/ local void   gotoLeft(void)
+#define GOTORIGHT() /*----------------*/ local void   gotoRight(void)
+#define GOTOSTART() /*----------------*/ local void   gotoStart(void)
+#define GOTOEND() /*------------------*/ local void   gotoEnd(void)
+
+#define SELECTLEFT() /*---------------*/ local void   selectLeft(void)
+#define SELECTRIGHT() /*--------------*/ local void   selectRight(void)
+#define SELECTSTART() /*--------------*/ local void   selectStart(void)
+#define SELECTEND() /*----------------*/ local void   selectEnd(void)
+#define SELECTALL() /*----------------*/ local void   selectAll(void)
+
+#define TOUPPERCASE() /*--------------*/ local void   toUppercase(void)
+#define TOLOWERCASE() /*--------------*/ local void   toLowercase(void)
+#define MATCHSHORTCUT() /*------------*/ local uint8  matchShortcut(const uint8 keycode, const uint16 modifier)
+#define INSERTCHARACTER() /*----------*/ local void   insertCharacter(const uint count, const uint8 *const buffer)
+#define DRAWTEXT() /*-----------------*/ local void   drawText(void)
 
 local ASCIIStringNodeRoot /*-*/ asciiRoot;
 local uint8 * /*-------------*/ utf8StringStart;
 local uint32 /*--------------*/ utf8StringToken;
 
-BACKSPACE();
+local uint8 /*---------------*/ inputForeheadStart[4096];
+local uint8 * /*-------------*/ inputForeheadCurrent;
+local uint /*----------------*/ inputForeheadSize;
+
+local uint8 * /*-------------*/ selectedCurrent;
+local uint /*----------------*/ selectedSize;
+
+GETSTRINGCHARACTERAMOUNT();
+GETLEFTCHARACTERSIZE();
+GETRIGHTCHARACTERSIZE();
+REMOVESELECTED();
+REMOVELEFT();
+REMOVERIGHT();
+GOTOLEFT();
+GOTORIGHT();
+GOTOSTART();
+GOTOEND();
+SELECTLEFT();
+SELECTRIGHT();
+SELECTSTART();
+SELECTEND();
+SELECTALL();
+TOUPPERCASE();
+TOLOWERCASE();
+MATCHSHORTCUT();
+INSERTCHARACTER();
 DRAWTEXT();
 
-BACKSPACE(){
+GETSTRINGCHARACTERAMOUNT(){
+	uint amount = 0;
+	jmp loop;
+	loop:{
+		if(*p){
+			const uint size = getRightCharacterSize(p);
+			if(!size){
+				ret 0;
+			}
+			p += size;
+			inc amount;
+			jmp loop;
+		}
+		ret amount;
+	}
+}
+
+
+
+
+
+
+
+
+
+GETLEFTCHARACTERSIZE(){
+	if(*p < b(10000000)){
+		ret 1 * sizeof(uint8);
+	}
+	if((*p & b(11000000)) == b(10000000) and (*(p - 1) & b(11100000)) == b(11000000)){
+		ret 2 * sizeof(uint8);
+	}
+	if((*p & b(11000000)) == b(10000000) and (*(p - 1) & b(11000000)) == b(10000000) and (*(p - 2) & b(11110000)) == b(11100000)){
+		ret 3 * sizeof(uint8);
+	}
+	if((*p & b(11000000)) == b(10000000) and (*(p - 1) & b(11000000)) == b(10000000) and (*(p - 2) & b(11000000)) == b(10000000) and (*(p - 3) & b(11111000)) == b(11110000)){
+		ret 4 * sizeof(uint8);
+	}
+	ret 0 * sizeof(uint8);
+}
+GETRIGHTCHARACTERSIZE(){
+	if(*p < b(10000000)){
+		ret 1 * sizeof(uint8);
+	}
+	if((*p & b(11100000)) == b(11000000) and (*(p + 1) & b(11000000)) == b(10000000)){
+		ret 2 * sizeof(uint8);
+	}
+	if((*p & b(11110000)) == b(11100000) and (*(p + 1) & b(11000000)) == b(10000000) and (*(p + 2) & b(11000000)) == b(10000000)){
+		ret 3 * sizeof(uint8);
+	}
+	if((*p & b(11111000)) == b(11110000) and (*(p + 1) & b(11000000)) == b(10000000) and (*(p + 2) & b(11000000)) == b(10000000) and (*(p + 3) & b(11000000)) == b(10000000)){
+		ret 4 * sizeof(uint8);
+	}
+	ret 0 * sizeof(uint8);
+}
+REMOVESELECTED(){
+	uint8 *p = selectedCurrent + selectedSize;
+	jmp shiftStringLeftwardsLoop;
+	shiftStringLeftwardsLoop:{
+		if(*p){
+			*(p - selectedSize) = *p;
+			inc p;
+			jmp shiftStringLeftwardsLoop;
+		}
+		*p = '\0';
+		inputForeheadCurrent = selectedCurrent;
+		selectedCurrent = NULL;
+		ret;
+	}
+}
+REMOVELEFT(){
+	uint characterSize;
+	uint8 *p;
+	if(selectedCurrent){
+		removeSelected();
+		ret;
+	}
 	if(inputForeheadCurrent == inputForeheadStart){
 		ret;
 	}
-	dec inputForeheadCurrent;
-	if(*inputForeheadCurrent < b(10000000)){
+	characterSize = getLeftCharacterSize(inputForeheadCurrent - 1);
+	inputForeheadCurrent -= characterSize;
+	inputForeheadSize -= characterSize;
+	p = inputForeheadCurrent + characterSize;
+	jmp shiftStringLeftwardsLoop;
+	shiftStringLeftwardsLoop:{
+		if(*p){
+			*(p - characterSize) = *p;
+			inc p;
+			jmp shiftStringLeftwardsLoop;
+		}
+		*p = '\0';
 		ret;
 	}
-	if(*inputForeheadCurrent < b(11000000)){
-		dec inputForeheadCurrent;
+}
+REMOVERIGHT(){
+	uint characterSize;
+	uint8 *p;
+	if(selectedCurrent){
+		removeSelected();
+		ret;
 	}
-	if(*inputForeheadCurrent < b(11000000)){
-		dec inputForeheadCurrent;
+	if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+		ret;
 	}
-	if(*inputForeheadCurrent < b(11000000)){
-		dec inputForeheadCurrent;
+	characterSize = getRightCharacterSize(inputForeheadCurrent);
+	p = inputForeheadCurrent + characterSize;
+	inputForeheadSize -= characterSize;
+	jmp shiftStringLeftwardsLoop;
+	shiftStringLeftwardsLoop:{
+		if(*p){
+			*(p - characterSize) = *p;
+			inc p;
+			jmp shiftStringLeftwardsLoop;
+		}
+		*p = '\0';
+		ret;
 	}
-	if(*inputForeheadCurrent < b(11111000) or *inputForeheadCurrent < b(11110000) or *inputForeheadCurrent < b(11100000)){
-		dec inputForeheadCurrent;
+}
+GOTOLEFT(){
+	selectedCurrent = NULL;
+	if(inputForeheadCurrent > inputForeheadStart){
+		inputForeheadCurrent -= getLeftCharacterSize(inputForeheadCurrent - 1);
 	}
-	inc inputForeheadCurrent;
 	ret;
 }
+GOTORIGHT(){
+	selectedCurrent = NULL;
+	if(inputForeheadCurrent < inputForeheadStart + inputForeheadSize){
+		inputForeheadCurrent += getRightCharacterSize(inputForeheadCurrent);
+	}
+	ret;
+}
+GOTOSTART(){
+	selectedCurrent = NULL;
+	inputForeheadCurrent = inputForeheadStart;
+	ret;
+}
+GOTOEND(){
+	selectedCurrent = NULL;
+	inputForeheadCurrent = inputForeheadStart + inputForeheadSize;
+	ret;
+}
+SELECTLEFT(){
+
+
+
+	/*!*/
+
+
+
+	ret;
+}
+SELECTRIGHT(){
+	if(!selectedCurrent){
+		selectedCurrent = inputForeheadCurrent;
+		selectedSize = getRightCharacterSize(selectedCurrent);
+		ret;
+	}
+	if(selectedCurrent > inputForeheadCurrent){
+		selectedSize += getRightCharacterSize(selectedCurrent);
+		ret;
+	}
+	if(selectedCurrent < inputForeheadCurrent){
+
+
+
+		/*!*/
+
+
+
+		ret;
+	}
+	if(selectedCurrent == inputForeheadCurrent){
+
+
+
+		/*!*/
+
+
+
+		ret;
+	}
+}
+SELECTSTART(){
+	selectedCurrent = inputForeheadStart;
+	selectedSize = inputForeheadCurrent - inputForeheadStart;
+	ret;
+}
+SELECTEND(){
+	selectedCurrent = inputForeheadCurrent;
+
+
+
+	/*!*/
+
+
+
+	ret;
+}
+SELECTALL(){
+	selectedCurrent = inputForeheadStart;
+	selectedSize = inputForeheadSize;
+	ret;
+}
+TOUPPERCASE(){
+
+
+
+	/*!*/
+
+
+
+	ret;
+}
+TOLOWERCASE(){
+
+
+
+	/*!*/
+
+
+
+	ret;
+}
+MATCHSHORTCUT(){
+	#define ESCAPE_KEYCODE /*----*/ (9)
+	#define BACKSPACE_KEYCODE /*-*/ (22)
+	#define ENTER_KEYCODE /*-----*/ (36)
+	#define A_KEYCODE /*---------*/ (38)
+	#define HOME_KEYCODE /*------*/ (110)
+	#define LEFT_KEYCODE /*------*/ (113)
+	#define RIGHT_KEYCODE /*-----*/ (114)
+	#define END_KEYCODE /*-------*/ (115)
+	#define DELETE_KEYCODE /*----*/ (119)
+	if(keycode == ESCAPE_KEYCODE and modifier == XCB_NONE){
+		ret TERMINAL_MATCH_SHORTCUT;
+	}
+	if(keycode == BACKSPACE_KEYCODE and modifier == XCB_NONE){
+		removeLeft();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == ENTER_KEYCODE and modifier == XCB_NONE){
+		exec((void *)inputForeheadStart);
+		ret TERMINAL_MATCH_SHORTCUT;
+	}
+	if(keycode == A_KEYCODE and modifier == XCB_MOD_MASK_CONTROL){
+		selectAll();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == HOME_KEYCODE and modifier == XCB_NONE){
+		gotoStart();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == LEFT_KEYCODE and modifier == XCB_NONE){
+		gotoLeft();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == RIGHT_KEYCODE and modifier == XCB_NONE){
+		gotoRight();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == END_KEYCODE and modifier == XCB_NONE){
+		gotoEnd();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+	if(keycode == DELETE_KEYCODE and modifier == XCB_NONE){
+		removeRight();
+		drawText();
+		ret FOUND_MATCH_SHORTCUT;
+	}
+
+
+
+	/*!
+		implement:
+			ctrl + delete       : delete right word
+			ctrl + backspace    : delete left word
+			ctrl + shift + z    : redo
+			ctrl + z            : undo
+			ctrl + c            : copy
+			ctrl + x            : cut
+			ctrl + v            : paste
+			ctrl + left         : move left by word
+			ctrl + right        : move right by word
+			shift + left        : select left
+			shift + right       : select right
+			ctrl + shift + left : select left word
+			ctrl + shift + right: select right word
+			shift + home        : select to start
+			shift + end         : select to end
+			shift + a           : select all (and move pointer to end)
+			shift + u           : to uppercase
+			shift + l           : to lowercase
+			tab                 : autocomplete first, autocomplete next on repeat, make it extensive by searching for the word each time
+	*/
+
+
+
+	ret NONE_MATCH_SHORTCUT;
+}
+INSERTCHARACTER(){
+	uint8 *current;
+	bool flag = true;
+	selectedCurrent = NULL;
+	if(!count){
+		ret;
+	}
+	if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+		jmp addCharacter;
+	}
+	current = inputForeheadStart + inputForeheadSize + count;
+	jmp shiftStringRighwardsLoop;
+	shiftStringRighwardsLoop:{
+		if(current >= inputForeheadCurrent){
+			*current = *(current - count);
+			flag = false;
+			dec current;
+			jmp shiftStringRighwardsLoop;
+		}
+		jmp addCharacter;
+	}
+	addCharacter:{
+		switch count over
+			to 1:{
+				*(inputForeheadCurrent + 0) = *(buffer + 0);
+				brk;
+			}
+			to 2:{
+				*(inputForeheadCurrent + 0) = *(buffer + 0);
+				*(inputForeheadCurrent + 1) = *(buffer + 1);
+				brk;
+			}
+			to 3:{
+				*(inputForeheadCurrent + 0) = *(buffer + 0);
+				*(inputForeheadCurrent + 1) = *(buffer + 1);
+				*(inputForeheadCurrent + 2) = *(buffer + 2);
+				brk;
+			}
+			to 4:{
+				*(inputForeheadCurrent + 0) = *(buffer + 0);
+				*(inputForeheadCurrent + 1) = *(buffer + 1);
+				*(inputForeheadCurrent + 2) = *(buffer + 2);
+				*(inputForeheadCurrent + 3) = *(buffer + 3);
+				brk;
+			}
+		end
+		inputForeheadCurrent += count;
+		inputForeheadSize += count;
+		if(flag){
+			*inputForeheadCurrent = '\0';
+		}
+		ret;
+	}
+}
 DRAWTEXT(){
-	*inputForeheadCurrent = '\0';
-	fprintf(stdout, "| %s: ", inputForeheadStart);
-	getMultipleASCIIStringNodes(&asciiRoot, 10, (void *)inputForeheadStart);
-	fprintf(stdout, "\n");
+	const uint amountPost = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
+	const uint amountPre = inputForeheadSize - amountPost;
+	fprintf(stdout, "▏%.*s|%.*s (selected: %s%s%s)\n", amountPre, inputForeheadStart, amountPost, inputForeheadCurrent, selectedCurrent and selectedCurrent > inputForeheadStart? "..." : "", selectedCurrent? (char *)selectedCurrent : "<NONE>", selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize? "..." : "");
+	/*! getMultipleASCIIStringNodes(&asciiRoot, 10, (void *)inputForeheadStart); */
 	ret;
 }
 
@@ -2164,6 +2557,10 @@ int main(int argumentAmount, const char *const *argument){
 
 
 	getThing:{
+		inputForeheadCurrent = inputForeheadStart;
+		inputForeheadSize = 0;
+		*inputForeheadStart = '\0';
+		selectedCurrent = NULL;
 		drawText();
 		jmp eventLoopCheckShortcuts;
 	}
@@ -2279,14 +2676,14 @@ int main(int argumentAmount, const char *const *argument){
 
 
 		/*!*/
-			if((*e).detail == 9){ /*! ESC */
-				jmp mainEmergencyExit;
-			}
-			if((*e).detail == 22){ /*! BS */
-				backspace();
-				drawText();
-				jmp eventLoop;
-			}
+
+
+
+			switch matchShortcut((*e).detail, (*e).state) over
+				to FOUND_MATCH_SHORTCUT: /*----*/ jmp eventLoop;
+				to TERMINAL_MATCH_SHORTCUT: /*-*/ jmp mainEmergencyExit;
+				off: /*------------------------*/ brk;
+			end
 			xlibEvent.xkey.type = (*e).response_type & ~b(10000000);
 			xlibEvent.xkey.send_event = false;
 			xlibEvent.xkey.display = display;
@@ -2303,22 +2700,8 @@ int main(int argumentAmount, const char *const *argument){
 			xlibEvent.xkey.same_screen = (*e).same_screen;
 			if(!XFilterEvent(&xlibEvent, (*screen).root)){
 				uint8 buffer[4];
-				int count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL);
-				if(count){
-					/*! fprintf(stdout, " xcb buffer: %u %.*s\n", count, count, buffer); */
-
-
-
-					*(inputForeheadCurrent + 0) = *(buffer + 0);
-					*(inputForeheadCurrent + 1) = *(buffer + 1);
-					*(inputForeheadCurrent + 2) = *(buffer + 2);
-					*(inputForeheadCurrent + 3) = *(buffer + 3);
-					inputForeheadCurrent += count;
-					drawText();
-
-
-
-				}
+				insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
+				drawText();
 				jmp eventLoop;
 			}
 			XSetEventQueueOwner(display, XlibOwnsEventQueue);
@@ -2333,33 +2716,15 @@ int main(int argumentAmount, const char *const *argument){
 			}
 			switchXlibEvent: switch xlibEvent.type over
 				to KeyPress:{
-					if(xlibEvent.xkey.keycode == 9){ /*! ESC */
-						jmp mainEmergencyExit;
-					}
-					if(xlibEvent.xkey.keycode == 22){ /*! BS */
-						backspace();
-						drawText();
-						jmp xlibEventLoop;
-					}
+					switch matchShortcut(xlibEvent.xkey.keycode, xlibEvent.xkey.state) over
+						to FOUND_MATCH_SHORTCUT: /*----*/ jmp eventLoop;
+						to TERMINAL_MATCH_SHORTCUT: /*-*/ jmp mainEmergencyExit;
+						off: /*------------------------*/ brk;
+					end
 					if(!XFilterEvent(&xlibEvent, (*screen).root)){
 						uint8 buffer[4];
-						int count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL);
-						if(count){
-							/*! fprintf(stdout, "xlib buffer: %u %.*s\n", count, count, buffer); */
-
-
-
-							*(inputForeheadCurrent + 0) = *(buffer + 0);
-							*(inputForeheadCurrent + 1) = *(buffer + 1);
-							*(inputForeheadCurrent + 2) = *(buffer + 2);
-							*(inputForeheadCurrent + 3) = *(buffer + 3);
-							inputForeheadCurrent += count;
-							*(inputForeheadCurrent + 0) = '\0';
-							fprintf(stdout, "%s\n", inputForeheadStart);
-
-
-
-						}
+						insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
+						drawText();
 					}
 					jmp xlibEventLoop;
 				}
