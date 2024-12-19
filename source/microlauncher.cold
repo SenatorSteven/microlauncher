@@ -902,10 +902,11 @@ GETMODIFIERKEYCODES(){
 #define INCOMPLETE_ASCII_STRING_NODE /*--*/ (2)
 
 #define SETASCIISTRINGROOT() /*----------*/ local void   setASCIIStringRoot(ASCIIStringNodeRoot *const root)
+#define PATHINSERTSTRING() /*------------*/ local void   pathInsertString(ASCIIStringNodeRoot *const root, const char *const path)
 #define ISASCIISTRING() /*---------------*/ local bool   isASCIIString(const void *string)
 #define INSERTASCIISTRING() /*-----------*/ local bool   insertASCIIString(ASCIIStringNodeRoot *const root, const char *string)
 #define GETASCIISTRINGNODE() /*----------*/ local uint8  getASCIIStringNode(ASCIIStringNodeRoot *const root, const bool findExact, const char **const stringReturn, ASCIIStringNode **nodeReturn)
-#define GETMULTIPLEASCIISTRINGNODES() /*-*/ local bool   getMultipleASCIIStringNodes(ASCIIStringNodeRoot *const root, const uint amount, const char *prefix)
+#define GETMULTIPLEASCIISTRINGNODES() /*-*/ local bool   getMultipleASCIIStringNodes(ASCIIStringNodeRoot *const root, const uint amount, const char *prefix, ASCIIStringsFound *const stringsReturn)
 #define DELETEASCIISTRINGROOT() /*-------*/ local void   deleteASCIIStringRoot(ASCIIStringNodeRoot *const root)
 
 #define findASCIIString(a, b) /*---------*/ (getASCIIStringNode(a, true, b, NULL) == COMPLETE_ASCII_STRING_NODE)
@@ -926,7 +927,77 @@ def struct{
 	uint16 /*------------*/ dataAllocated;
 } ASCIIStringNodeRoot;
 
+def struct{
+	uint32 /*------------*/ dataSize;
+	uint32 /*------------*/ dataAllocated;
+	uint8 * /*-----------*/ dataStart;
+	uint32 /*------------*/ dataToken;
+	uint8 /*-------------*/ pad0[4];
+} ASCIIStringsFound;
+
+def struct{
+	int32 /*---------------*/ x;
+	int32 /*---------------*/ y;
+	int32 /*---------------*/ xOffset;
+	int32 /*---------------*/ yOffset;
+	int32 /*---------------*/ width;
+	int32 /*---------------*/ height;
+	uint8 /*---------------*/ xType;
+	uint8 /*---------------*/ yType;
+	uint8 /*---------------*/ xOffsetType;
+	uint8 /*---------------*/ yOffsetType;
+	uint8 /*---------------*/ widthType;
+	uint8 /*---------------*/ heightType;
+	uint8 /*---------------*/ horizontalAlignment;
+	uint8 /*---------------*/ verticalAlignment;
+	uint32 /*--------------*/ radius;
+	uint8 /*---------------*/ cornerUsed;
+	uint8 /*---------------*/ pad0[3];
+	uint32 /*--------------*/ foreground;
+	uint32 /*--------------*/ background;
+	uint32 /*--------------*/ selectedForeground;
+	uint32 /*--------------*/ selectedBackground;
+} ElementPreferences;
+
+def struct{
+	int32 /*---------------*/ x;
+	int32 /*---------------*/ y;
+	uint32 /*--------------*/ width;
+	uint32 /*--------------*/ height;
+	const Monitor * /*-----*/ monitor;
+} ElementRectangle;
+
+/*! needed */
+	local xcb_window_t /*--------*/ window;
+	local xcb_pixmap_t /*--------*/ pixmap;
+	local xcb_gcontext_t /*------*/ gc;
+	local bool /*----------------*/ mapped;
+
+/*! input */
+	local ASCIIStringNodeRoot /*-*/ asciiRoot;
+	local uint8 * /*-------------*/ utf8StringStart;
+	local uint32 /*--------------*/ utf8StringToken;
+
+	local uint8 /*---------------*/ inputForeheadStart[4096];
+	local uint8 * /*-------------*/ inputForeheadCurrent;
+	local uint /*----------------*/ inputForeheadSize;
+
+	local uint8 * /*-------------*/ selectedCurrent;
+	local uint /*----------------*/ selectedSize;
+
+	local uint8 /*---------------*/ bufferStart[4096];
+	local uint /*----------------*/ bufferSize;
+
+	local uint8 /*---------------*/ inputMode;
+
+/*! config */
+	local uint8 /*--------------*/ whichMonitor;
+	local ElementPreferences /*-*/ windowPreferences;
+	local xcb_pixmap_t /*-------*/ windowCirclePixmap;
+	local xcb_font_t /*---------*/ font;
+
 SETASCIISTRINGROOT();
+PATHINSERTSTRING();
 ISASCIISTRING();
 INSERTASCIISTRING();
 GETASCIISTRINGNODE();
@@ -945,6 +1016,111 @@ SETASCIISTRINGROOT(){
 	}
 	setMemory((*root).dataStart, 0, DATA_BLOCK_SIZE * sizeof(ASCIIStringNode) / sizeof(uint64), sizeof(uint64));
 	ret;
+}
+PATHINSERTSTRING(){
+	#define UTF8_STRING_BLOCK_SIZE /*-*/ (16)
+	char *pathStart = getenv(path);
+	if(pathStart and *pathStart){
+		char *pathCurrent = pathStart;
+		uint i = 1;
+		utf8StringStart = malloc(UTF8_STRING_BLOCK_SIZE * sizeof(uint8));
+		utf8StringToken = pushPointer(utf8StringStart, "utf-8 executables string pointer", iFree);
+		jmp getPathNameLoop;
+		getPathNameLoop:{
+
+
+
+
+
+
+
+
+
+			DIR *dir;
+			uint32 dirToken;
+			char lastChar;
+			if(*pathCurrent != ':' and *pathCurrent != '\0'){
+				inc pathCurrent;
+				jmp getPathNameLoop;
+			}
+			lastChar = *pathCurrent;
+			*pathCurrent = '\0';
+			fprintf(stdout, "path %u: %s\n", i, pathStart);
+
+
+
+			dir = opendir(pathStart);
+			dirToken = pushPointer(pathStart, "executable path pointer", closedir);
+			if(dir){
+				jmp storeDirectoryNameLoop;
+				storeDirectoryNameLoop:{
+					struct dirent *entry;
+					if((entry = readdir(dir))){
+
+
+
+						/*!*/
+
+
+
+						const char *const name = (*entry).d_name;
+						if(*name == '.' and (*(name + 1) == '\0' or (*(name + 1) == '.' and *(name + 2) == '\0'))){
+							jmp storeDirectoryNameLoop;
+						}
+						if((*entry).d_type != DT_LNK and (*entry).d_type != DT_REG){
+							jmp storeDirectoryNameLoop;
+						}
+						if(isASCIIString(name)){
+							const char *n = name;
+							if(!insertASCIIString(root, n)){
+								fprintf(stdout, "\t%s not put\n", name);
+							}
+							n = name;
+							if(!findASCIIString(root, &n)){
+								fprintf(stdout, "\t%s not found\n", name);
+							}
+							jmp storeDirectoryNameLoop;
+						}
+						fprintf(stdout, "\tgotta add to non-ascii list\n");
+
+
+
+						/*!*/
+
+
+
+						jmp storeDirectoryNameLoop;
+					}
+					closedir(dir);
+					popPointer(dirToken);
+				}
+			}
+
+
+
+			fprintf(stdout, "\n");
+			*pathCurrent = lastChar;
+			if(*pathCurrent == ':'){
+				inc pathCurrent;
+			}
+			if(*pathCurrent){
+				inc i;
+				pathStart = pathCurrent;
+				jmp getPathNameLoop;
+			}
+
+
+
+
+
+
+
+
+
+		}
+	}
+	ret;
+	#undef  UTF8_STRING_BLOCK_SIZE
 }
 ISASCIISTRING(){
 	jmp loop;
@@ -1082,7 +1258,7 @@ GETASCIISTRINGNODE(){
 */
 
 GETMULTIPLEASCIISTRINGNODES(){
-	#define FOUND_STRINGS_BLOCK_SIZE /*-*/ (256 * 256)
+	#define FOUND_STRINGS_BLOCK_SIZE /*-*/ (512)
 	const uint32 *childOffsetCurrent;
 	ASCIIStringNode *const data = (*root).dataStart;
 	ASCIIStringNode *node = data;
@@ -1091,18 +1267,15 @@ GETMULTIPLEASCIISTRINGNODES(){
 
 
 
-	uint stringAmount = 0;
 
 
 
-	uint returnSize = FOUND_STRINGS_BLOCK_SIZE;
-	/*! uint returnAllocated = 0; */
-	uint8 *returnData = malloc(returnSize * sizeof(uint8));
-	uint8 *returnDataCurrent = returnData + sizeof(uint32) + sizeof(uint16);
-	uint32 returnToken = pushPointer(returnData, "getMultipleASCIIStringNodes() ascii string pointer", iFree);
-	if(!returnData){
-		ret false;
-	}
+	uint returnDataSize;
+	uint returnDataAllocated;
+	uint8 *returnDataStart;
+	uint8 *returnDataCurrent;
+	uint32 returnDataToken;
+	uint returnDataStringAmount;
 
 
 
@@ -1112,7 +1285,7 @@ GETMULTIPLEASCIISTRINGNODES(){
 		switch getASCIIStringNode(root, true, &string, &node) over
 			to COMPLETE_ASCII_STRING_NODE: /*---*/ jmp prefixFound;
 			to INCOMPLETE_ASCII_STRING_NODE: /*-*/ jmp prefixFound;
-			off: /*-----------------------------*/ free(returnData); popPointer(returnToken); ret false; /*!*/
+			off: /*-----------------------------*/ ret false;
 		end
 	}
 	prefixFound:{
@@ -1121,15 +1294,30 @@ GETMULTIPLEASCIISTRINGNODES(){
 		}
 		(*node).counter = 0;
 		childOffsetCurrent = (*node).childOffset;
-		jmp prefixFoundLoop;
-		prefixFoundLoop:{
+		jmp copyPrefixLoop;
+		copyPrefixLoop:{
 			if(*prefix){
 				*bufferCurrent = *prefix;
 				inc bufferCurrent;
 				inc prefix;
-				jmp prefixFoundLoop;
+				jmp copyPrefixLoop;
 			}
 			*bufferCurrent = '\0';
+
+
+
+			returnDataSize = FOUND_STRINGS_BLOCK_SIZE;
+			returnDataAllocated = 0;
+			returnDataStart = malloc(returnDataSize * sizeof(uint8));
+			returnDataCurrent = returnDataStart + sizeof(uint32) + sizeof(uint16);
+			returnDataToken = pushPointer(returnDataStart, "getMultipleASCIIStringNodes() ascii string pointer", iFree);
+			returnDataStringAmount = 0;
+			if(!returnDataStart){
+				ret false;
+			}
+
+
+
 			jmp nextLetterLoop;
 		}
 	}
@@ -1151,41 +1339,34 @@ GETMULTIPLEASCIISTRINGNODES(){
 				jmp copyNameLoop;
 				copyNameLoop:{
 					if(*current){
-
-
-
-#ifdef a
-						if(returnAllocated == returnSize){
+						if(returnDataAllocated == returnDataSize){
+							const uint offset = returnDataCurrent - returnDataStart;
 							void *temp;
-							returnSize += FOUND_STRINGS_BLOCK_SIZE;
-							temp = realloc(returnData, returnSize * sizeof(uint8));
-							updatePointer(returnToken, temp);
+							returnDataSize += FOUND_STRINGS_BLOCK_SIZE;
+							temp = realloc(returnDataStart, returnDataSize * sizeof(uint8));
+							updatePointer(returnDataToken, temp);
 							if(!temp){
 								printTitledError("memory allocation error", "could not reallocate memory for matched ascii strings");
-								returnSize -= FOUND_STRINGS_BLOCK_SIZE;
-								free(returnData);
-								popPointer(returnToken);
-								ret false; /*! salvage what has been found instead */
+								returnDataSize -= FOUND_STRINGS_BLOCK_SIZE;
+								jmp emergencyExit;
 							}
-							returnData = temp;
+							returnDataStart = temp;
+							returnDataCurrent = returnDataStart + offset;
 						}
-#endif
-
-
-
 						*returnDataCurrent = *current;
+						inc returnDataAllocated;
 						inc returnDataCurrent;
 						inc current;
 						jmp copyNameLoop;
 					}
 					dec bufferCurrent;
+					node = data + (*node).parentOffset;
+					childOffsetCurrent = (*node).childOffset + (*node).counter;
+					if(inc returnDataStringAmount == amount){
+						jmp emergencyExit;
+					}
+					jmp nextLetterLoop;
 				}
-				node = data + (*node).parentOffset;
-				childOffsetCurrent = (*node).childOffset + (*node).counter;
-				if(inc stringAmount == amount){
-					jmp emergencyExit;
-				}
-				jmp nextLetterLoop;
 			}
 			*bufferCurrent = (*child).letter;
 			inc bufferCurrent;
@@ -1203,29 +1384,12 @@ GETMULTIPLEASCIISTRINGNODES(){
 		jmp emergencyExit;
 	}
 	emergencyExit:{
-		*(uint32 *)returnData = returnSize;
-		*(uint16 *)(returnData + sizeof(uint32)) = stringAmount;
-
-
-
-		{
-			uint8 *current = returnData + sizeof(uint32) + sizeof(uint16);
-			jmp printLoop;
-			printLoop:{
-				if(stringAmount){
-					fprintf(stdout, "%.*s ", *current, current + 1);
-					current += *current + 1;
-					dec stringAmount;
-					jmp printLoop;
-				}
-				fprintf(stdout, "\n");
-			}
-		}
-
-
-
-		free(returnData);
-		popPointer(returnToken);
+		*(uint32 *)returnDataStart = returnDataSize;
+		*(uint16 *)(returnDataStart + sizeof(uint32)) = returnDataStringAmount;
+		(*stringsReturn).dataStart = returnDataStart;
+		(*stringsReturn).dataToken = returnDataToken;
+		(*stringsReturn).dataSize = returnDataSize;
+		(*stringsReturn).dataAllocated = returnDataAllocated;
 		ret true;
 	}
 	#undef  FOUND_STRINGS_BLOCK_SIZE
@@ -1300,65 +1464,6 @@ DELETEASCIISTRINGROOT(){
 #define GETRECTANGLE() /*---------------*/ local bool          getRectangle(const Monitor *const _monitor, const ElementRectangle *const windowRectangle, const ElementPreferences *const preferences, ElementRectangle *const rectangle)
 #define GETTYPEDNUMBER() /*-------------*/ local uint          getTypedNumber(const uint number, const uint8 type, const uint8 axis, const Monitor *const monitor)
 #define UNMAPWINDOW() /*----------------*/ local void          unmapWindow(void)
-
-def struct{
-	int32 /*---------------*/ x;
-	int32 /*---------------*/ y;
-	uint32 /*--------------*/ width;
-	uint32 /*--------------*/ height;
-	const Monitor * /*-----*/ monitor;
-} ElementRectangle;
-
-def struct{
-	int32 /*---------------*/ x;
-	int32 /*---------------*/ y;
-	int32 /*---------------*/ xOffset;
-	int32 /*---------------*/ yOffset;
-	int32 /*---------------*/ width;
-	int32 /*---------------*/ height;
-	uint8 /*---------------*/ xType;
-	uint8 /*---------------*/ yType;
-	uint8 /*---------------*/ xOffsetType;
-	uint8 /*---------------*/ yOffsetType;
-	uint8 /*---------------*/ widthType;
-	uint8 /*---------------*/ heightType;
-	uint8 /*---------------*/ horizontalAlignment;
-	uint8 /*---------------*/ verticalAlignment;
-	uint32 /*--------------*/ radius;
-	uint8 /*---------------*/ cornerUsed;
-	uint8 /*---------------*/ pad0[3];
-	uint32 /*--------------*/ foreground;
-	uint32 /*--------------*/ background;
-} ElementPreferences;
-
-/*! needed */
-	local xcb_window_t /*-------*/ window;
-	local xcb_pixmap_t /*-------*/ pixmap;
-	local xcb_gcontext_t /*-----*/ gc;
-	local bool /*---------------*/ mapped;
-
-/*! input */
-	local ASCIIStringNodeRoot /*-*/ asciiRoot;
-	local uint8 * /*-------------*/ utf8StringStart;
-	local uint32 /*--------------*/ utf8StringToken;
-
-	local uint8 /*---------------*/ inputForeheadStart[4096];
-	local uint8 * /*-------------*/ inputForeheadCurrent;
-	local uint /*----------------*/ inputForeheadSize;
-
-	local uint8 * /*-------------*/ selectedCurrent;
-	local uint /*----------------*/ selectedSize;
-
-	local uint8 /*---------------*/ bufferStart[4096];
-	local uint /*----------------*/ bufferSize;
-
-	local uint8 /*---------------*/ inputMode;
-
-/*! config */
-	local uint8 /*--------------*/ whichMonitor;
-	local ElementPreferences /*-*/ windowPreferences;
-	local xcb_pixmap_t /*-------*/ windowCirclePixmap;
-	local xcb_font_t /*---------*/ font;
 
 MAPWINDOW();
 GETWHICHMONITOR();
@@ -1500,6 +1605,46 @@ SETWINDOWPROPERTIES(){
 	ret;
 }
 
+#define NONE_MATCH_SHORTCUT /*--------*/ (0)
+#define FOUND_MATCH_SHORTCUT /*-------*/ (1)
+#define TERMINAL_MATCH_SHORTCUT /*----*/ (2)
+
+#define NONE_INPUT_MODE /*------------*/ (0)
+#define NORMAL_INPUT_MODE /*----------*/ (1)
+#define INSERT_INPUT_MODE /*----------*/ (2)
+
+#define NONE_MATCH_SIZE /*------------*/ (0)
+#define CHARACTER_MATCH_SIZE /*-------*/ (1)
+#define WORD_MATCH_SIZE /*------------*/ (2)
+
+#define GETSTRINGCHARACTERAMOUNT() /*-*/ local uint   getStringCharacterAmount(const uint8 *p)
+#define GETLEFTCHARACTERSIZE() /*-----*/ local uint   getLeftCharacterSize(const uint8 *const p)
+#define GETRIGHTCHARACTERSIZE() /*----*/ local uint   getRightCharacterSize(const uint8 *const p)
+#define GETLEFTWORDSIZE() /*----------*/ local uint   getLeftWordSize(const uint8 *const p)
+#define GETRIGHTWORDSIZE() /*---------*/ local uint   getRightWordSize(const uint8 *const p)
+#define SHIFTLEFTWARDS() /*-----------*/ local void   shiftLeftwards(const uint distance)
+#define SHIFTRIGHTWARDS() /*----------*/ local void   shiftRightwards(const uint distance)
+#define MATCHSHORTCUT() /*------------*/ local uint8  matchShortcut(const uint8 keycode, const uint16 modifier)
+#define CHANGEMODE() /*---------------*/ local void   changeMode(void)
+#define INSERTCHARACTER() /*----------*/ local void   insertCharacter(const uint count, const uint8 *const buffer)
+#define GOTOLEFT() /*-----------------*/ local void   gotoLeft(const uint8 matchSize)
+#define GOTORIGHT() /*----------------*/ local void   gotoRight(const uint8 matchSize)
+#define GOTOSTART() /*----------------*/ local void   gotoStart(void)
+#define GOTOEND() /*------------------*/ local void   gotoEnd(void)
+#define SELECTLEFT() /*---------------*/ local void   selectLeft(const uint8 matchSize)
+#define SELECTRIGHT() /*--------------*/ local void   selectRight(const uint8 matchSize)
+#define SELECTSTART() /*--------------*/ local void   selectStart(void)
+#define SELECTEND() /*----------------*/ local void   selectEnd(void)
+#define SELECTALL() /*----------------*/ local void   selectAll(void)
+#define TOUPPERCASE() /*--------------*/ local void   toUppercase(void)
+#define TOLOWERCASE() /*--------------*/ local void   toLowercase(void)
+#define COPYSELECTED() /*-------------*/ local void   copySelected(void)
+#define REMOVESELECTED() /*-----------*/ local void   removeSelected(void)
+#define PASTEBUFFER() /*--------------*/ local void   pasteBuffer(void)
+#define REMOVELEFT() /*---------------*/ local void   removeLeft(const uint8 matchSize)
+#define REMOVERIGHT() /*--------------*/ local void   removeRight(const uint8 matchSize)
+#define DRAWTEXT() /*-----------------*/ local void   drawText(void)
+
 
 
 
@@ -1556,35 +1701,234 @@ DRAWWINDOW(){
 
 
 
-		if(font and inputForeheadSize){
+		if(font and (inputForeheadSize or inputMode == INSERT_INPUT_MODE)){
+			int x = 20;
+			int y = 20;
 			uint16 ucs2Start[4096];
 			uint8 buffer[5] = {0, 0, 0, 0, 0};
-			uint length = UTF8ToUCS2(inputForeheadStart, ucs2Start, countof(ucs2Start));
-			if(length){
-				xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
-				uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
-				if(reply){
+			uint length;
+			uint8 *current = inputForeheadStart;
+			uint8 selectedCopy = 0;
+			uint32 valueList[2];
 
 
 
-					const int x = 20;
-					const int y = 20;
 
 
 
-					const int fontX = (*reply).overall_left + x;
-					const int fontY = (*reply).font_ascent + y;
-					const uint fontWidth = (*reply).overall_width;
-					const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
-					uint32 valueList[2];
-					(void)fontWidth;
-					(void)fontHeight;
-					*(valueList + 0) = windowPreferences.foreground;
-					*(valueList + 1) = windowPreferences.background;
-					xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
-					xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
-					free(reply);
-					popPointer(token);
+
+
+
+			if(inputMode == NORMAL_INPUT_MODE or selectedCurrent){
+
+
+
+
+
+
+
+
+
+				if(selectedCurrent){
+					selectedCopy = *selectedCurrent;
+					*selectedCurrent = '\0';
+				}
+				if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+					xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+					uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+					if(reply){
+						const int fontX = (*reply).overall_left + x;
+						const int fontY = (*reply).font_ascent + y;
+						const uint fontWidth = (*reply).overall_width;
+						const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+						(void)fontHeight;
+						*(valueList + 0) = windowPreferences.foreground;
+						*(valueList + 1) = windowPreferences.background;
+						xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+						xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+						free(reply);
+						popPointer(token);
+						x += fontWidth;
+					}
+				}
+				if(selectedCurrent){
+					*selectedCurrent = selectedCopy;
+					selectedCopy = *(selectedCurrent + selectedSize);
+					*(selectedCurrent + selectedSize) = '\0';
+					current = selectedCurrent;
+					if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+						xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+						uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+						if(reply){
+							const int fontX = (*reply).overall_left + x;
+							const int fontY = (*reply).font_ascent + y;
+							const uint fontWidth = (*reply).overall_width;
+							const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+							(void)fontHeight;
+							*(valueList + 0) = windowPreferences.selectedForeground;
+							*(valueList + 1) = windowPreferences.selectedBackground;
+							xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+							xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+							free(reply);
+							popPointer(token);
+							x += fontWidth;
+						}
+					}
+					current = selectedCurrent + selectedSize;
+					*current = selectedCopy;
+					if(selectedCopy){
+						if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+							xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+							uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+							if(reply){
+								const int fontX = (*reply).overall_left + x;
+								const int fontY = (*reply).font_ascent + y;
+								const uint fontWidth = (*reply).overall_width;
+								const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+								(void)fontHeight;
+								*(valueList + 0) = windowPreferences.foreground;
+								*(valueList + 1) = windowPreferences.background;
+								xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+								xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+								free(reply);
+								popPointer(token);
+								x += fontWidth;
+							}
+						}
+					}
+				}
+
+
+
+
+
+
+
+
+
+			}elif(inputMode == INSERT_INPUT_MODE){
+
+
+
+
+
+
+
+
+
+				selectedCopy = *inputForeheadCurrent;
+				*inputForeheadCurrent = '\0';
+				if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+					xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+					uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+					if(reply){
+						const int fontX = (*reply).overall_left + x;
+						const int fontY = (*reply).font_ascent + y;
+						const uint fontWidth = (*reply).overall_width;
+						const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+						(void)fontHeight;
+						*(valueList + 0) = windowPreferences.foreground;
+						*(valueList + 1) = windowPreferences.background;
+						xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+						xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+						free(reply);
+						popPointer(token);
+						x += fontWidth;
+					}
+				}
+				*inputForeheadCurrent = selectedCopy;
+
+
+
+
+
+
+
+
+
+				selectedCopy = *(inputForeheadCurrent + 1);
+				*(inputForeheadCurrent + 1) = '\0';
+				current = inputForeheadCurrent;
+				if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+					xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+					uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+					if(reply){
+						const int fontX = (*reply).overall_left + x;
+						const int fontY = (*reply).font_ascent + y;
+						const uint fontWidth = (*reply).overall_width;
+						const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+						(void)fontHeight;
+						*(valueList + 0) = windowPreferences.selectedForeground;
+						*(valueList + 1) = windowPreferences.selectedBackground;
+						xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+						xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+						free(reply);
+						popPointer(token);
+						x += fontWidth;
+					}
+				}
+				current = inputForeheadCurrent + 1;
+				*current = selectedCopy;
+
+
+
+
+
+
+
+
+
+				if(inputForeheadCurrent + 1 < inputForeheadStart + inputForeheadSize){
+					if(selectedCopy){
+						if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+							xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+							uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+							if(reply){
+								const int fontX = (*reply).overall_left + x;
+								const int fontY = (*reply).font_ascent + y;
+								const uint fontWidth = (*reply).overall_width;
+								const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+								(void)fontHeight;
+								*(valueList + 0) = windowPreferences.foreground;
+								*(valueList + 1) = windowPreferences.background;
+								xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+								xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+								free(reply);
+								popPointer(token);
+								x += fontWidth;
+							}
+						}
+					}
+				}
+
+
+
+
+
+
+
+
+
+				if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+					uint8 string[2] = {' ', '\0'};
+					if((length = UTF8ToUCS2(string, ucs2Start, countof(ucs2Start)))){
+						xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+						uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+						if(reply){
+							const int fontX = (*reply).overall_left + x;
+							const int fontY = (*reply).font_ascent + y;
+							const uint fontWidth = (*reply).overall_width;
+							const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+							(void)fontHeight;
+							*(valueList + 0) = windowPreferences.selectedForeground;
+							*(valueList + 1) = windowPreferences.selectedBackground;
+							xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+							xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+							free(reply);
+							popPointer(token);
+							x += fontWidth;
+						}
+					}
 				}
 			}
 
@@ -1596,6 +1940,7 @@ DRAWWINDOW(){
 
 
 
+#ifdef a
 			{
 				uint8 *current = (void *)"▏";
 				uint8 *bufferCurrent = buffer;
@@ -1637,6 +1982,7 @@ DRAWWINDOW(){
 					popPointer(token);
 				}
 			}
+#endif
 
 
 
@@ -1771,46 +2117,6 @@ UNMAPWINDOW(){
 
 
 
-
-#define NONE_MATCH_SHORTCUT /*--------*/ (0)
-#define FOUND_MATCH_SHORTCUT /*-------*/ (1)
-#define TERMINAL_MATCH_SHORTCUT /*----*/ (2)
-
-#define NONE_INPUT_MODE /*------------*/ (0)
-#define NORMAL_INPUT_MODE /*----------*/ (1)
-#define INSERT_INPUT_MODE /*----------*/ (2)
-
-#define NONE_MATCH_SIZE /*------------*/ (0)
-#define CHARACTER_MATCH_SIZE /*-------*/ (1)
-#define WORD_MATCH_SIZE /*------------*/ (2)
-
-#define GETSTRINGCHARACTERAMOUNT() /*-*/ local uint   getStringCharacterAmount(const uint8 *p)
-#define GETLEFTCHARACTERSIZE() /*-----*/ local uint   getLeftCharacterSize(const uint8 *const p)
-#define GETRIGHTCHARACTERSIZE() /*----*/ local uint   getRightCharacterSize(const uint8 *const p)
-#define GETLEFTWORDSIZE() /*----------*/ local uint   getLeftWordSize(const uint8 *const p)
-#define GETRIGHTWORDSIZE() /*---------*/ local uint   getRightWordSize(const uint8 *const p)
-#define SHIFTLEFTWARDS() /*-----------*/ local void   shiftLeftwards(const uint distance)
-#define SHIFTRIGHTWARDS() /*----------*/ local void   shiftRightwards(const uint distance)
-#define MATCHSHORTCUT() /*------------*/ local uint8  matchShortcut(const uint8 keycode, const uint16 modifier)
-#define CHANGEMODE() /*---------------*/ local void   changeMode(void)
-#define INSERTCHARACTER() /*----------*/ local void   insertCharacter(const uint count, const uint8 *const buffer)
-#define GOTOLEFT() /*-----------------*/ local void   gotoLeft(const uint8 matchSize)
-#define GOTORIGHT() /*----------------*/ local void   gotoRight(const uint8 matchSize)
-#define GOTOSTART() /*----------------*/ local void   gotoStart(void)
-#define GOTOEND() /*------------------*/ local void   gotoEnd(void)
-#define SELECTLEFT() /*---------------*/ local void   selectLeft(const uint8 matchSize)
-#define SELECTRIGHT() /*--------------*/ local void   selectRight(const uint8 matchSize)
-#define SELECTSTART() /*--------------*/ local void   selectStart(void)
-#define SELECTEND() /*----------------*/ local void   selectEnd(void)
-#define SELECTALL() /*----------------*/ local void   selectAll(void)
-#define TOUPPERCASE() /*--------------*/ local void   toUppercase(void)
-#define TOLOWERCASE() /*--------------*/ local void   toLowercase(void)
-#define COPYSELECTED() /*-------------*/ local void   copySelected(void)
-#define REMOVESELECTED() /*-----------*/ local void   removeSelected(void)
-#define PASTEBUFFER() /*--------------*/ local void   pasteBuffer(void)
-#define REMOVELEFT() /*---------------*/ local void   removeLeft(const uint8 matchSize)
-#define REMOVERIGHT() /*--------------*/ local void   removeRight(const uint8 matchSize)
-#define DRAWTEXT() /*-----------------*/ local void   drawText(void)
 
 /*! GETSTRINGCHARACTERAMOUNT(); */
 GETLEFTCHARACTERSIZE();
@@ -2010,8 +2316,8 @@ MATCHSHORTCUT(){
 			ctrl + z            : undo
 			ctrl + shift + z    : redo
 
-			tab                 : autocomplete first, autocomplete next on repeat, make it extensive by searching for the word each time
-			shift+tab           : autocomplete backwards
+			tab       / down    : autocomplete first, autocomplete next on repeat, make it extensive by searching for the word each time
+			shift+tab / up      : autocomplete backwards
 	*/
 
 
@@ -2445,8 +2751,8 @@ COPYSELECTED(){
 	}
 }
 REMOVESELECTED(){
-	shiftLeftwards(selectedSize);
 	inputForeheadCurrent = selectedCurrent;
+	shiftLeftwards(selectedSize);
 	inputForeheadSize -= selectedSize;
 	selectedCurrent = NULL;
 	ret;
@@ -2512,29 +2818,45 @@ REMOVERIGHT(){
 	ret;
 }
 DRAWTEXT(){
-/*!
+	ASCIIStringsFound stringsFound;
+	uint value;
 	{
 		const uint amountPost = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
 		const uint amountPre = inputForeheadSize - amountPost;
 		const char *const dotsPre = selectedCurrent and selectedCurrent >= inputForeheadStart + 3? "..." : selectedCurrent and selectedCurrent >= inputForeheadStart + 2? ".." : selectedCurrent and selectedCurrent >= inputForeheadStart + 1? "." : "";
-		const uint length = selectedCurrent? selectedSize : lengthof("<NONE>");
-		const char *const dotsPost = selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 2? "..." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 1? ".." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 0? "." : "";
+		const uint selectedLength = selectedCurrent? selectedSize : lengthof("<NONE>");
 		const char *const selected = selectedCurrent? (char *)selectedCurrent : "<NONE>";
+		const char *const dotsPost = selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 2? "..." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 1? ".." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 0? "." : "";
 		const char *const buffer = bufferSize? (char *)bufferStart : "";
 		const uint bufferLength = bufferSize? bufferSize : lengthof("");
 		const char *const isASCII = isASCIIString(inputForeheadStart)? "" : " (non-ascii)";
 		const char *const mode = inputMode == NORMAL_INPUT_MODE? "" : " (insert)";
-		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, inputForeheadStart, amountPost, inputForeheadCurrent, dotsPre, length, selected, dotsPost, bufferLength, buffer, isASCII, mode);
+		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, inputForeheadStart, amountPost, inputForeheadCurrent, dotsPre, selectedLength, selected, dotsPost, bufferLength, buffer, isASCII, mode);
 	}
-*/
 
 
 
-	getMultipleASCIIStringNodes(&asciiRoot, 10, (void *)inputForeheadStart);
-
-
-
+	value = getMultipleASCIIStringNodes(&asciiRoot, 10, (void *)inputForeheadStart, &stringsFound);
 	configureWindow();
+	if(value){
+		uint stringAmount = *(uint16 *)(stringsFound.dataStart + sizeof(uint32));
+		uint8 *current = stringsFound.dataStart + sizeof(uint32) + sizeof(uint16);
+		jmp printLoop;
+		printLoop:{
+			if(stringAmount){
+				fprintf(stdout, "%.*s ", *current, current + 1);
+				current += *current + 1;
+				dec stringAmount;
+				jmp printLoop;
+			}
+			fprintf(stdout, "\n");
+		}
+		free(stringsFound.dataStart);
+		popPointer(stringsFound.dataToken);
+	}
+
+
+
 	ret;
 }
 
@@ -3371,122 +3693,7 @@ int main(int argumentAmount, const char *const *argument){
 		bulkInsertString(&variableRoot, variableList);
 		bulkInsertString(&modifierRoot, modifierList);
 		bulkInsertString(&macroRoot, macroList);
-
-
-
-
-
-
-
-
-
-		jmp storeExecutables;
-		storeExecutables:{
-			#define UTF8_STRING_BLOCK_SIZE /*-*/ (16)
-			char *pathStart = getenv("PATH");
-			if(pathStart and *pathStart){
-				char *pathCurrent = pathStart;
-				uint i = 1;
-				utf8StringStart = malloc(UTF8_STRING_BLOCK_SIZE * sizeof(uint8));
-				utf8StringToken = pushPointer(utf8StringStart, "utf-8 executables string pointer", iFree);
-				jmp getPathNameLoop;
-				getPathNameLoop:{
-
-
-
-
-
-
-
-
-
-					DIR *dir;
-					uint32 dirToken;
-					char lastChar;
-					if(*pathCurrent != ':' and *pathCurrent != '\0'){
-						inc pathCurrent;
-						jmp getPathNameLoop;
-					}
-					lastChar = *pathCurrent;
-					*pathCurrent = '\0';
-					fprintf(stdout, "path %u: %s\n", i, pathStart);
-
-
-
-					dir = opendir(pathStart);
-					dirToken = pushPointer(pathStart, "executable path pointer", closedir);
-					if(dir){
-						jmp storeDirectoryNameLoop;
-						storeDirectoryNameLoop:{
-							struct dirent *entry;
-							if((entry = readdir(dir))){
-								const char *const name = (*entry).d_name;
-								if(*name == '.' and (*(name + 1) == '\0' or (*(name + 1) == '.' and *(name + 2) == '\0'))){
-									jmp storeDirectoryNameLoop;
-								}
-								if((*entry).d_type != DT_LNK and (*entry).d_type != DT_REG){
-									jmp storeDirectoryNameLoop;
-								}
-								if(isASCIIString(name)){
-									const char *n = name;
-									if(!insertASCIIString(&asciiRoot, n)){
-										fprintf(stdout, "\t%s not put\n", name);
-									}
-									n = name;
-									if(!findASCIIString(&asciiRoot, &n)){
-										fprintf(stdout, "\t%s not found\n", name);
-									}
-									jmp storeDirectoryNameLoop;
-								}
-								fprintf(stdout, "\tgotta add to non-ascii list\n");
-
-
-
-								/*!*/
-
-
-
-								jmp storeDirectoryNameLoop;
-							}
-							closedir(dir);
-							popPointer(dirToken);
-						}
-					}
-
-
-
-					fprintf(stdout, "\n");
-					*pathCurrent = lastChar;
-					if(*pathCurrent == ':'){
-						inc pathCurrent;
-					}
-					if(*pathCurrent){
-						inc i;
-						pathStart = pathCurrent;
-						jmp getPathNameLoop;
-					}
-
-
-
-
-
-
-
-
-
-				}
-			}
-			#undef  UTF8_STRING_BLOCK_SIZE
-		}
-
-
-
-
-
-
-
-
-
+		pathInsertString(&asciiRoot, "PATH");
 		jmp readConfig;
 	}
 	readConfig:{
@@ -3543,6 +3750,8 @@ int main(int argumentAmount, const char *const *argument){
 		windowPreferences.cornerUsed = TOP_LEFT_CORNER_USED | TOP_RIGHT_CORNER_USED | BOTTOM_LEFT_CORNER_USED | BOTTOM_RIGHT_CORNER_USED;
 		windowPreferences.foreground = 0xFFFFFFFF;
 		windowPreferences.background = 0xFF171717;
+		windowPreferences.selectedForeground = 0xFF171717;
+		windowPreferences.selectedBackground = 0xFFFFFFFF;
 		whichMonitor = POINTER_WHICH_MONITOR;
 
 
@@ -3691,18 +3900,10 @@ int main(int argumentAmount, const char *const *argument){
 	keyPressEvent:{
 		#define e /*-*/ ((xcb_key_press_event_t *)event)
 		XEvent xlibEvent;
+		bool usingXlib;
 		if(getNextShortcut(&keycodeShortcut, (*e).detail, (*e).state, &keyPressNextOffset)){
 			jmp switchCommandDown;
 		}
-
-
-
-
-
-
-
-
-
 		switch matchShortcut((*e).detail, (*e).state) over
 			to FOUND_MATCH_SHORTCUT: /*----*/ jmp eventLoop;
 			to TERMINAL_MATCH_SHORTCUT: /*-*/ jmp mainEmergencyExit;
@@ -3723,10 +3924,8 @@ int main(int argumentAmount, const char *const *argument){
 		xlibEvent.xkey.keycode = (*e).detail;
 		xlibEvent.xkey.same_screen = (*e).same_screen;
 		if(!XFilterEvent(&xlibEvent, (*screen).root)){
-			uint8 buffer[4];
-			insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
-			drawText();
-			jmp eventLoop;
+			usingXlib = false;
+			jmp insertCharacter;
 		}
 		XSetEventQueueOwner(display, XlibOwnsEventQueue);
 		jmp xlibEventLoop;
@@ -3741,14 +3940,13 @@ int main(int argumentAmount, const char *const *argument){
 		switchXlibEvent: switch xlibEvent.type over
 			to KeyPress:{
 				switch matchShortcut(xlibEvent.xkey.keycode, xlibEvent.xkey.state) over
-					to FOUND_MATCH_SHORTCUT: /*----*/ jmp eventLoop;
+					to FOUND_MATCH_SHORTCUT: /*----*/ jmp xlibEventLoop;
 					to TERMINAL_MATCH_SHORTCUT: /*-*/ jmp mainEmergencyExit;
 					off: /*------------------------*/ brk;
 				end
 				if(!XFilterEvent(&xlibEvent, (*screen).root)){
-					uint8 buffer[4];
-					insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
-					drawText();
+					usingXlib = true;
+					jmp insertCharacter;
 				}
 				jmp xlibEventLoop;
 			}
@@ -3757,15 +3955,15 @@ int main(int argumentAmount, const char *const *argument){
 				jmp eventLoop;
 			}
 		end
-
-
-
-
-
-
-
-
-
+		insertCharacter:{
+			uint8 buffer[4];
+			insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
+			drawText();
+			if(usingXlib){
+				jmp xlibEventLoop;
+			}
+			jmp eventLoop;
+		}
 		#undef  e
 	}
 	keyReleaseEvent:{
@@ -4775,6 +4973,8 @@ SETCONFIGVARIABLES(){
 	windowPreferences.cornerUsed = NONE_CORNER_USED;
 	windowPreferences.foreground = 0x00000000;
 	windowPreferences.background = 0x00000000;
+	windowPreferences.selectedForeground = 0x00000000;
+	windowPreferences.selectedBackground = 0x00000000;
 	whichMonitor = NONE_WHICH_MONITOR;
 	font = XCB_NONE;
 	ret;
