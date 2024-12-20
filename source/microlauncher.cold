@@ -1419,24 +1419,24 @@ GETMULTIPLEASCIISTRINGNODES(){
 				inc returnDataCurrent;
 				jmp copyNameLoop;
 				copyNameLoop:{
-					if(*current){
-						if(returnDataAllocated == returnDataSize){
-							const uint offset = returnDataCurrent - returnDataStart;
-							void *temp;
-							returnDataSize += FOUND_STRINGS_BLOCK_SIZE;
-							temp = realloc(returnDataStart, returnDataSize * sizeof(uint8));
-							updatePointer(returnDataToken, temp);
-							if(!temp){
-								printTitledError("memory allocation error", "could not reallocate memory for matched ascii strings");
-								returnDataSize -= FOUND_STRINGS_BLOCK_SIZE;
-								jmp emergencyExit;
-							}
-							returnDataStart = temp;
-							returnDataCurrent = returnDataStart + offset;
+					if(returnDataAllocated == returnDataSize){
+						const uint offset = returnDataCurrent - returnDataStart;
+						void *temp;
+						returnDataSize += FOUND_STRINGS_BLOCK_SIZE;
+						temp = realloc(returnDataStart, returnDataSize * sizeof(uint8));
+						updatePointer(returnDataToken, temp);
+						if(!temp){
+							printTitledError("memory allocation error", "could not reallocate memory for matched ascii strings");
+							returnDataSize -= FOUND_STRINGS_BLOCK_SIZE;
+							jmp emergencyExit;
 						}
-						*returnDataCurrent = *current;
-						inc returnDataAllocated;
-						inc returnDataCurrent;
+						returnDataStart = temp;
+						returnDataCurrent = returnDataStart + offset;
+					}
+					*returnDataCurrent = *current;
+					inc returnDataAllocated;
+					inc returnDataCurrent;
+					if(*current){
 						inc current;
 						jmp copyNameLoop;
 					}
@@ -1760,26 +1760,53 @@ DRAWWINDOW(){
 
 
 
+
+
+
+
+
+
 			/*! also draw results */
 
 			if(asciiRoot.stringsFoundStart){
 				uint stringAmount = *(uint16 *)(asciiRoot.stringsFoundStart + sizeof(uint32));
 				uint8 *current = asciiRoot.stringsFoundStart + sizeof(uint32) + sizeof(uint16);
+
+
+
+				x = 20;
+				y = 40;
+
+
+
 				jmp printLoop;
 				printLoop:{
 					if(stringAmount){
-						fprintf(stdout, "%.*s ", *current, current + 1);
-						current += *current + 1;
+
+
+
+						drawUTF8(current + 1, &x, &y, windowPreferences.foreground, windowPreferences.background);
+						x = 20;
+						y += 20;
+
+
+
+						current += *current + 2;
 						dec stringAmount;
 						jmp printLoop;
 					}
-					fprintf(stdout, "\n");
 				}
 				free(asciiRoot.stringsFoundStart);
 				popPointer(asciiRoot.stringsFoundToken);
 				asciiRoot.stringsFoundStart = NULL;
 				asciiRoot.stringsFoundToken = 0;
 			}
+
+
+
+
+
+
 
 
 
@@ -2585,7 +2612,7 @@ REMOVERIGHT(){
 	ret;
 }
 DRAWTEXT(){
-	const uint resultAmount = 10;
+	const uint resultAmount = 13;
 	/*! {
 		const uint amountPost = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
 		const uint amountPre = inputForeheadSize - amountPost;
