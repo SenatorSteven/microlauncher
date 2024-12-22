@@ -8,11 +8,15 @@
 */
 
 /*!
+	check for bugs in the text code and also understand why commands don't pass when the language changes in matchShortcut().
+*/
+
+/*!
 	consider different roots for each directory in path.
 */
 
 /*!
-	when reading text live, check if the text is ascii. if it isn't, change a flag. check on backspace, too.
+	"as" is giving only "as" and not "as" and "assistant" and a whole lot more
 */
 
 /*!
@@ -36,8 +40,7 @@
 /*!
 	future features:
 		optimize searching.
-		support utf8 in toUppercase().
-		support utf8 in toLowercase().
+		support utf8 in toCase().
 		support utf8 in <\b finder>.
 */
 
@@ -222,8 +225,35 @@ SOFTWARE. */
 
 	#define NONE_COMMAND /*--------------------------*/ (0)
 	#define EXECUTE_COMMAND /*-----------------------*/ (1)
-	#define RESTART_COMMAND /*-----------------------*/ (2)
-	#define EXIT_COMMAND /*--------------------------*/ (3)
+	#define TO_NEXT_LETTER_COMMAND /*----------------*/ (2)
+	#define TO_PREVIOUS_LETTER_COMMAND /*------------*/ (3)
+	#define TO_NEXT_WORD_COMMAND /*------------------*/ (4)
+	#define TO_PREVIOUS_WORD_COMMAND /*--------------*/ (5)
+	#define TO_START_OF_LINE_COMMAND /*--------------*/ (6)
+	#define TO_END_OF_LINE_COMMAND /*----------------*/ (7)
+	#define TO_NEXT_RESULT_COMMAND /*----------------*/ (8)
+	#define TO_PREVIOUS_RESULT_COMMAND /*------------*/ (9)
+	#define REMOVE_LEFT_LETTER_COMMAND /*------------*/ (10)
+	#define REMOVE_RIGHT_LETTER_COMMAND /*-----------*/ (11)
+	#define REMOVE_LEFT_WORD_COMMAND /*--------------*/ (12)
+	#define REMOVE_RIGHT_WORD_COMMAND /*-------------*/ (13)
+	#define SELECT_LEFT_LETTER_COMMAND /*------------*/ (14)
+	#define SELECT_RIGHT_LETTER_COMMAND /*-----------*/ (15)
+	#define SELECT_LEFT_WORD_COMMAND /*--------------*/ (16)
+	#define SELECT_RIGHT_WORD_COMMAND /*-------------*/ (17)
+	#define SELECT_TO_START_OF_LINE_COMMAND /*-------*/ (18)
+	#define SELECT_TO_END_OF_LINE_COMMAND /*---------*/ (19)
+	#define SELECT_ALL_COMMAND /*--------------------*/ (20)
+	#define COPY_SELECTION_COMMAND /*----------------*/ (21)
+	#define CUT_SELECTION_COMMAND /*-----------------*/ (22)
+	#define PASTE_SELECTION_COMMAND /*---------------*/ (23)
+	#define UPPERCASE_SELECTION_COMMAND /*-----------*/ (24)
+	#define LOWERCASE_SELECTION_COMMAND /*-----------*/ (25)
+	#define TOGGLE_INSERT_MODE_COMMAND /*------------*/ (26)
+	#define PICK_RESULT_COMMAND /*-------------------*/ (27)
+	#define LAUNCH_COMMAND /*------------------------*/ (28)
+	#define RESTART_COMMAND /*-----------------------*/ (29)
+	#define EXIT_COMMAND /*--------------------------*/ (30)
 
 	#define NONE_VARIABLE /*-------------------------*/ (0)
 
@@ -345,7 +375,7 @@ SOFTWARE. */
 			: "unhandled extension event" \
 		))
 		#define useXEventName(n0, n1) /*-*/ n0 == n1? *(n1 + (((*event).response_type & ~b(10000000)) >= countof(n1)? countof(n1) - 1 : (*event).response_type & ~b(10000000)))
-		#define printCommand(void) /*----*/ (fprintf(DEFAULT_OUTPUT_STREAM, "%s%s: %scommand:%s %s\n", colorStart, programName, colorEvent, colorEnd, *(commandList + ((*eventModifierNode).command >= countof(commandList)? countof(commandList) - 1 : (*eventModifierNode).command))))
+		#define printCommand(s) /*-------*/ (fprintf(DEFAULT_OUTPUT_STREAM, "%s%s: %scommand " s ":%s %s\n", colorStart, programName, colorEvent, colorEnd, *(commandList + ((*eventModifierNode).command >= countof(commandList)? countof(commandList) - 1 : (*eventModifierNode).command))))
 	#else
 		#define printXEvent(void) /*-----*/ EMPTY_MACRO
 		#define printCommand(void) /*----*/ EMPTY_MACRO
@@ -534,7 +564,80 @@ SOFTWARE. */
 		xcb_atom_t /*----------*/ _XEMBED_INFO;
 		xcb_atom_t /*----------*/ _XEMBED;
 		xcb_atom_t /*----------*/ _XROOTPMAP_ID;
-	} CommonAtom;
+	} CommonAtoms;
+
+
+
+
+
+
+
+
+
+	/*!*/
+
+	def struct{
+		uint8 /*---------------*/ letter;
+		uint8 /*---------------*/ childrenAmount;
+		uint8 /*---------------*/ counter;
+		uint8 /*---------------*/ pad0[1];
+		uint32 /*--------------*/ childOffset[128];
+		uint32 /*--------------*/ parentOffset;
+	} ASCIIStringNode;
+
+	def struct{
+		uint32 /*--------------*/ dataSize;
+		uint32 /*--------------*/ dataAllocated;
+		ASCIIStringNode * /*---*/ dataStart;
+		uint32 /*--------------*/ dataToken;
+		uint32 /*--------------*/ stringsFoundAmount;
+		uint32 /*--------------*/ stringsFoundSize;
+		uint32 /*--------------*/ stringsFoundAllocated;
+		uint8 * /*-------------*/ stringsFoundStart;
+		uint32 /*--------------*/ stringsFoundToken;
+		uint8 /*---------------*/ pad0[4];
+	} ASCIIStringNodeRoot;
+
+	def struct{
+		int32 /*---------------*/ x;
+		int32 /*---------------*/ y;
+		int32 /*---------------*/ xOffset;
+		int32 /*---------------*/ yOffset;
+		int32 /*---------------*/ width;
+		int32 /*---------------*/ height;
+		uint8 /*---------------*/ xType;
+		uint8 /*---------------*/ yType;
+		uint8 /*---------------*/ xOffsetType;
+		uint8 /*---------------*/ yOffsetType;
+		uint8 /*---------------*/ widthType;
+		uint8 /*---------------*/ heightType;
+		uint8 /*---------------*/ horizontalAlignment;
+		uint8 /*---------------*/ verticalAlignment;
+		uint32 /*--------------*/ radius;
+		uint8 /*---------------*/ cornerUsed;
+		uint8 /*---------------*/ pad0[3];
+		uint32 /*--------------*/ foreground;
+		uint32 /*--------------*/ background;
+		uint32 /*--------------*/ selectedForeground;
+		uint32 /*--------------*/ selectedBackground;
+	} ElementPreferences;
+
+	def struct{
+		const Monitor * /*-----*/ monitor;
+		int32 /*---------------*/ x;
+		int32 /*---------------*/ y;
+		uint32 /*--------------*/ width;
+		uint32 /*--------------*/ height;
+	} ElementRectangle;
+
+
+
+
+
+
+
+
+
 /*!}*/
 
 /*!globals:{*/
@@ -586,7 +689,7 @@ SOFTWARE. */
 	local uint8 /*------------------------*/ randrBaseError;
 	local xcb_visualid_t /*---------------*/ visual;
 	local uint8 /*------------------------*/ depth;
-	local CommonAtom /*-------------------*/ atom;
+	local CommonAtoms /*------------------*/ atom;
 	local uint /*-------------------------*/ monitorAllocated;
 	local Monitor * /*--------------------*/ monitorStart;
 	local uint32 /*-----------------------*/ monitorToken;
@@ -610,6 +713,24 @@ SOFTWARE. */
 	local uint32 /*-----------------------*/ eventToken;
 	local uint8 /*------------------------*/ shortcutCode;
 	local uint16 /*-----------------------*/ shortcutModifier;
+
+
+
+
+
+
+
+
+
+	/*!*/
+
+
+
+
+
+
+
+
 
 	local const char *const /*------------*/ errorName[] = {"unrecognized", "request", "value", "window", "pixmap", "atom", "cursor", "font", "match", "drawable", "access", "allocation", "colormap", "graphics context", "id choice", "name", "length", "implementation", "unrecognized"};
 	local const char *const /*------------*/ operationName[] = {"unrecognized", "create window", "change window attributes", "get window attributes", "destroy window", "destroy subwindows", "change save set", "reparent window", "map window", "map subwindows", "unmap window", "unmap subwindows", "configure window", "circulate window", "get geometry", "query tree", "intern atom", "get atom name", "change property", "delete property", "get property", "list properties", "set selection owner", "get selection owner", "convert selection", "send event", "grab pointer", "ungrab pointer", "grab button", "ungrab button", "change active pointer grab", "grab keyboard", "ungrab keyboard", "grab key", "ungrab key", "allow events", "grab server", "ungrab server", "query pointer", "get motion events", "translate coordinates", "warp pointer", "set input focus", "get input focus", "query keymap", "open font", "close font", "query font", "query text extents", "list fonts", "list fonts with info", "set font path", "get font path", "create pixmap", "free pixmap", "create graphics context", "change graphics context", "copy graphics context", "set dashes", "set clip rectangles", "free graphics context", "clear area", "copy area", "copy plane", "poly point", "poly line", "poly segment", "poly rectangle", "poly arc", "fill poly", "poly fill rectangle", "poly fill arc", "put image", "get image", "poly text (8)", "poly text (16)", "image text (8)", "image text (16)", "create colormap", "free colormap", "copy colormap and free", "install colormap", "uninstall colormap", "list installed colormaps", "allocate color", "allocate named color", "allocate color cells", "allocate color planes", "free colors", "store colors", "store named color", "query colors", "lookup color", "create cursor", "create glyph cursor", "free cursor", "recolor cursor", "query best size", "query extension", "list extensions", "change keyboard mapping", "get keyboard mapping", "change keyboard control", "get keyboard control", "bell", "change pointer control", "get pointer control", "set screen saver", "get screen saver", "change hosts", "list hosts", "set access control", "set close down mode", "kill client", "rotate properties", "force screen saver", "set pointer mapping", "get pointer mapping", "set modifier mapping", "get modifier mapping", "unrecognized", "unrecognized", "unrecognized", "unrecognized", "unrecognized", "unrecognized", "unrecognized", "no", "unrecognized"};
@@ -653,6 +774,33 @@ SOFTWARE. */
 	local const char *const /*------------*/ commandList[] = {
 		  "none"
 		, "execute"
+		, "to-next-letter"
+		, "to-previous-letter"
+		, "to-next-word"
+		, "to-previous-word"
+		, "to-start-of-line"
+		, "to-end-of-line"
+		, "to-next-result"
+		, "to-previous-result"
+		, "remove-left-letter"
+		, "remove-right-letter"
+		, "remove-left-word"
+		, "remove-right-word"
+		, "select-left-letter"
+		, "select-right-letter"
+		, "select-left-word"
+		, "select-right-word"
+		, "select-to-start-of-line"
+		, "select-to-end-of-line"
+		, "select-all"
+		, "copy-selection"
+		, "cut-selection"
+		, "paste-selection"
+		, "uppercase-selection"
+		, "lowercase-selection"
+		, "toggle-insert-mode"
+		, "pick-result"
+		, "launch"
 		, "restart"
 		, "exit"
 		, NULL
@@ -938,6 +1086,10 @@ GETMODIFIERKEYCODES(){
 #define LEFT_DIRECTION /*----------------*/ (1)
 #define RIGHT_DIRECTION /*---------------*/ (2)
 
+#define NONE_CASE /*---------------------*/ (0)
+#define UPPER_CASE /*--------------------*/ (1)
+#define LOWER_CASE /*--------------------*/ (2)
+
 #define SETASCIISTRINGROOT() /*----------*/ local void          setASCIIStringRoot(ASCIIStringNodeRoot *const root)
 #define PATHINSERTSTRING() /*------------*/ local void          pathInsertString(ASCIIStringNodeRoot *const root, const char *const path)
 #define ISASCIISTRING() /*---------------*/ local bool          isASCIIString(const void *string)
@@ -972,68 +1124,14 @@ GETMODIFIERKEYCODES(){
 #define SELECTSTART() /*-----------------*/ local void          selectStart(void)
 #define SELECTEND() /*-------------------*/ local void          selectEnd(void)
 #define SELECTALL() /*-------------------*/ local void          selectAll(void)
-#define TOUPPERCASE() /*-----------------*/ local void          toUppercase(void)
-#define TOLOWERCASE() /*-----------------*/ local void          toLowercase(void)
+#define TOCASE() /*----------------------*/ local void          toCase(const uint8 newCase)
 #define COPYSELECTED() /*----------------*/ local void          copySelected(void)
 #define REMOVESELECTED() /*--------------*/ local void          removeSelected(void)
 #define PASTEBUFFER() /*-----------------*/ local void          pasteBuffer(void)
-#define REMOVELEFT() /*------------------*/ local void          removeLeft(const uint8 matchSize)
-#define REMOVERIGHT() /*-----------------*/ local void          removeRight(const uint8 matchSize)
+#define REMOVETEXT() /*------------------*/ local void          removeText(const uint8 direction, const uint8 matchSize)
 #define DRAWTEXT() /*--------------------*/ local void          drawText(void)
 
 #define findASCIIString(a, b) /*---------*/ (getASCIIStringNode(a, true, b, NULL) == COMPLETE_ASCII_STRING_NODE)
-
-def struct{
-	uint8 /*---------------*/ letter;
-	uint8 /*---------------*/ childrenAmount;
-	uint8 /*---------------*/ counter;
-	uint8 /*---------------*/ pad0[1];
-	uint32 /*--------------*/ childOffset[128];
-	uint32 /*--------------*/ parentOffset;
-} ASCIIStringNode;
-
-def struct{
-	uint32 /*--------------*/ dataSize;
-	uint32 /*--------------*/ dataAllocated;
-	ASCIIStringNode * /*---*/ dataStart;
-	uint32 /*--------------*/ dataToken;
-	uint32 /*--------------*/ stringsFoundSize;
-	uint32 /*--------------*/ stringsFoundAllocated;
-	uint8 * /*-------------*/ stringsFoundStart;
-	uint32 /*--------------*/ stringsFoundToken;
-} ASCIIStringNodeRoot;
-
-def struct{
-	int32 /*---------------*/ x;
-	int32 /*---------------*/ y;
-	int32 /*---------------*/ xOffset;
-	int32 /*---------------*/ yOffset;
-	int32 /*---------------*/ width;
-	int32 /*---------------*/ height;
-	uint8 /*---------------*/ xType;
-	uint8 /*---------------*/ yType;
-	uint8 /*---------------*/ xOffsetType;
-	uint8 /*---------------*/ yOffsetType;
-	uint8 /*---------------*/ widthType;
-	uint8 /*---------------*/ heightType;
-	uint8 /*---------------*/ horizontalAlignment;
-	uint8 /*---------------*/ verticalAlignment;
-	uint32 /*--------------*/ radius;
-	uint8 /*---------------*/ cornerUsed;
-	uint8 /*---------------*/ pad0[3];
-	uint32 /*--------------*/ foreground;
-	uint32 /*--------------*/ background;
-	uint32 /*--------------*/ selectedForeground;
-	uint32 /*--------------*/ selectedBackground;
-} ElementPreferences;
-
-def struct{
-	const Monitor * /*-----*/ monitor;
-	int32 /*---------------*/ x;
-	int32 /*---------------*/ y;
-	uint32 /*--------------*/ width;
-	uint32 /*--------------*/ height;
-} ElementRectangle;
 
 /*! needed */
 	local xcb_window_t /*--------*/ window;
@@ -1057,6 +1155,10 @@ def struct{
 	local uint /*----------------*/ bufferSize; /*!*/
 
 	local uint8 /*---------------*/ inputMode;
+
+	local uint /*----------------*/ maximumStringAmount;
+
+	local int /*-----------------*/ currentSelectedResult;
 
 /*! config */
 	local uint8 /*---------------*/ whichMonitor;
@@ -1100,26 +1202,25 @@ SELECTRIGHT();
 SELECTSTART();
 SELECTEND();
 SELECTALL();
-TOUPPERCASE();
-TOLOWERCASE();
+TOCASE();
 COPYSELECTED();
 REMOVESELECTED();
 PASTEBUFFER();
-REMOVELEFT();
-REMOVERIGHT();
+REMOVETEXT();
 DRAWTEXT();
 
 SETASCIISTRINGROOT(){
 	#define DATA_BLOCK_SIZE /*--------------*/ (16384)
 	#define UTF8_STRING_BLOCK_SIZE /*-------*/ (16)
-	#define FOUND_STRINGS_BLOCK_SIZE /*-----*/ (512)
+	#define FOUND_STRINGS_BLOCK_SIZE /*-----*/ (16) /*! 0.5k */
 	#define NONE_ASCII_STRING_NODE /*-------*/ (0)
 	#define COMPLETE_ASCII_STRING_NODE /*---*/ (1)
 	#define INCOMPLETE_ASCII_STRING_NODE /*-*/ (2)
 	(*root).dataSize = DATA_BLOCK_SIZE;
 	(*root).dataAllocated = 1;
 	(*root).dataStart = malloc(DATA_BLOCK_SIZE * sizeof(ASCIIStringNode));
-	(*root).dataToken = pushPointer((*root).dataStart, "string tree pointer", iFree);
+	(*root).dataToken = pushPointer((*root).dataStart, "ascii string tree pointer", iFree);
+	(*root).stringsFoundAmount = 0;
 	(*root).stringsFoundSize = 0;
 	(*root).stringsFoundAllocated = 0;
 	(*root).stringsFoundStart = NULL;
@@ -1360,12 +1461,12 @@ GETMULTIPLEASCIISTRINGNODES(){
 	ASCIIStringNode *node = data;
 	uint8 bufferStart[256];
 	uint8 *bufferCurrent = bufferStart;
-	uint returnDataSize;
-	uint returnDataAllocated;
-	uint8 *returnDataStart;
-	uint8 *returnDataCurrent;
-	uint32 returnDataToken;
-	uint returnDataStringAmount;
+	uint returnStringsFoundAmount;
+	uint returnStringsFoundSize;
+	uint returnStringsFoundAllocated;
+	uint8 *returnStringsFoundStart;
+	uint8 *returnStringsFoundCurrent;
+	uint32 returnStringsFoundToken;
 	jmp getNode;
 	getNode:{
 		const char *string = prefix;
@@ -1390,13 +1491,13 @@ GETMULTIPLEASCIISTRINGNODES(){
 				jmp copyPrefixLoop;
 			}
 			*bufferCurrent = '\0';
-			returnDataSize = FOUND_STRINGS_BLOCK_SIZE;
-			returnDataAllocated = 0;
-			returnDataStart = malloc(returnDataSize * sizeof(uint8));
-			returnDataCurrent = returnDataStart + sizeof(uint32) + sizeof(uint16);
-			returnDataToken = pushPointer(returnDataStart, "getMultipleASCIIStringNodes() ascii string pointer", iFree);
-			returnDataStringAmount = 0;
-			if(!returnDataStart){
+			returnStringsFoundAmount = 0;
+			returnStringsFoundSize = FOUND_STRINGS_BLOCK_SIZE;
+			returnStringsFoundAllocated = 0;
+			returnStringsFoundStart = malloc(returnStringsFoundSize * sizeof(uint8));
+			returnStringsFoundCurrent = returnStringsFoundStart;
+			returnStringsFoundToken = pushPointer(returnStringsFoundStart, "getMultipleASCIIStringNodes() ascii string pointer", iFree);
+			if(!returnStringsFoundStart){
 				ret false;
 			}
 			jmp nextLetterLoop;
@@ -1415,27 +1516,42 @@ GETMULTIPLEASCIISTRINGNODES(){
 			if((*child).letter == b(10000000)){
 				uint8 *current = bufferStart;
 				*bufferCurrent = '\0';
-				*returnDataCurrent = bufferCurrent - bufferStart;
-				inc returnDataCurrent;
+				if(returnStringsFoundAllocated == returnStringsFoundSize){
+					const uint offset = returnStringsFoundCurrent - returnStringsFoundStart;
+					void *temp;
+					returnStringsFoundSize += FOUND_STRINGS_BLOCK_SIZE;
+					temp = realloc(returnStringsFoundStart, returnStringsFoundSize * sizeof(uint8));
+					updatePointer(returnStringsFoundToken, temp);
+					if(!temp){
+						printTitledError("memory allocation error", "could not reallocate memory for matched ascii strings");
+						returnStringsFoundSize -= FOUND_STRINGS_BLOCK_SIZE;
+						jmp emergencyExit;
+					}
+					returnStringsFoundStart = temp;
+					returnStringsFoundCurrent = returnStringsFoundStart + offset;
+				}
+				*returnStringsFoundCurrent = bufferCurrent - bufferStart;
+				inc returnStringsFoundCurrent;
+				inc returnStringsFoundAllocated;
 				jmp copyNameLoop;
 				copyNameLoop:{
-					if(returnDataAllocated == returnDataSize){
-						const uint offset = returnDataCurrent - returnDataStart;
+					if(returnStringsFoundAllocated == returnStringsFoundSize){
+						const uint offset = returnStringsFoundCurrent - returnStringsFoundStart;
 						void *temp;
-						returnDataSize += FOUND_STRINGS_BLOCK_SIZE;
-						temp = realloc(returnDataStart, returnDataSize * sizeof(uint8));
-						updatePointer(returnDataToken, temp);
+						returnStringsFoundSize += FOUND_STRINGS_BLOCK_SIZE;
+						temp = realloc(returnStringsFoundStart, returnStringsFoundSize * sizeof(uint8));
+						updatePointer(returnStringsFoundToken, temp);
 						if(!temp){
 							printTitledError("memory allocation error", "could not reallocate memory for matched ascii strings");
-							returnDataSize -= FOUND_STRINGS_BLOCK_SIZE;
+							returnStringsFoundSize -= FOUND_STRINGS_BLOCK_SIZE;
 							jmp emergencyExit;
 						}
-						returnDataStart = temp;
-						returnDataCurrent = returnDataStart + offset;
+						returnStringsFoundStart = temp;
+						returnStringsFoundCurrent = returnStringsFoundStart + offset;
 					}
-					*returnDataCurrent = *current;
-					inc returnDataAllocated;
-					inc returnDataCurrent;
+					*returnStringsFoundCurrent = *current;
+					inc returnStringsFoundCurrent;
+					inc returnStringsFoundAllocated;
 					if(*current){
 						inc current;
 						jmp copyNameLoop;
@@ -1443,7 +1559,7 @@ GETMULTIPLEASCIISTRINGNODES(){
 					dec bufferCurrent;
 					node = data + (*node).parentOffset;
 					childOffsetCurrent = (*node).childOffset + (*node).counter;
-					if(inc returnDataStringAmount == amount){
+					if(inc returnStringsFoundAmount == amount){
 						jmp emergencyExit;
 					}
 					jmp nextLetterLoop;
@@ -1465,18 +1581,19 @@ GETMULTIPLEASCIISTRINGNODES(){
 		jmp emergencyExit;
 	}
 	emergencyExit:{
-		*(uint32 *)returnDataStart = returnDataSize;
-		*(uint16 *)(returnDataStart + sizeof(uint32)) = returnDataStringAmount;
-		(*root).stringsFoundSize = returnDataSize;
-		(*root).stringsFoundAllocated = returnDataAllocated;
-		(*root).stringsFoundStart = returnDataStart;
-		(*root).stringsFoundToken = returnDataToken;
+		(*root).stringsFoundAmount = returnStringsFoundAmount;
+		(*root).stringsFoundSize = returnStringsFoundSize;
+		(*root).stringsFoundAllocated = returnStringsFoundAllocated;
+		(*root).stringsFoundStart = returnStringsFoundStart;
+		(*root).stringsFoundToken = returnStringsFoundToken;
 		ret true;
 	}
 }
 DELETEASCIISTRINGROOT(){
 	free((*root).dataStart);
 	popPointer((*root).dataToken);
+	free((*root).stringsFoundStart);
+	popPointer((*root).stringsFoundToken);
 	ret;
 	#undef  INCOMPLETE_ASCII_STRING_NODE
 	#undef  COMPLETE_ASCII_STRING_NODE
@@ -1511,6 +1628,8 @@ DELETEASCIISTRINGROOT(){
 
 
 
+
+/*! this is used to draw the window anew but it updates the window size position etc based on fresh data when only drawing is needed. this is very likely needed -- just not to draw the window alone. */
 
 #define CONFIGUREWINDOW() /*-*/ local void  configureWindow(void)
 
@@ -1557,7 +1676,7 @@ MAPWINDOW(){
 			valueList.width = rectangle.width;
 			valueList.height = rectangle.height;
 			xcb_configure_window(connection, window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE, &valueList);
-			setWindowProperties(window, monitor, valueList.x, valueList.y, valueList.width, valueList.height);
+			setWindowProperties(window, NULL, valueList.x, valueList.y, valueList.width, valueList.height);
 			xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_USER_TIME, XCB_ATOM_CARDINAL, bitsof(uint32), 1, &userTime);
 			drawWindow(window, monitor, &rectangle);
 			xcb_map_window(connection, window);
@@ -1615,31 +1734,78 @@ GETFOCUSEDWINDOW(){
 	}
 }
 SETWINDOWPROPERTIES(){
-	(void)window;
+	const uint32 desktop = 0xFFFFFFFF;
+	const pid_t pid = getpid();
+	char hostname[256];
+	xcb_atom_t type[1];
+	xcb_atom_t state[2];
+	struct{
+		uint32 /*-*/ flags;
+		int32 /*--*/ x;
+		int32 /*--*/ y;
+		int32 /*--*/ width;
+		int32 /*--*/ height;
+		int32 /*--*/ minWidth;
+		int32 /*--*/ minHeight;
+		int32 /*--*/ maxWidth;
+		int32 /*--*/ maxHeight;
+		int32 /*--*/ widthInc;
+		int32 /*--*/ heightInc;
+		int32 /*--*/ minAspectNumerator;
+		int32 /*--*/ minAspectDenominarator;
+		int32 /*--*/ maxAspectNumerator;
+		int32 /*--*/ maxAspectDenominarator;
+		int32 /*--*/ baseWidth;
+		int32 /*--*/ baseHeight;
+		int32 /*--*/ winGravity;
+	} normalHints;
+	struct{
+		uint32 /*-*/ flags;
+		uint32 /*-*/ input;
+		uint32 /*-*/ initialState;
+	} hints;
 	(void)monitor;
-	(void)x;
-	(void)y;
-	(void)width;
-	(void)height;
-
-
-
-
-
-
-
-
-
-	/*!*/
-
-
-
-
-
-
-
-
-
+	normalHints.flags = USER_POSITION_NORMAL_HINT | USER_SIZE_NORMAL_HINT | PROGRAM_MINIMUM_SIZE_NORMAL_HINT | PROGRAM_MAXIMUM_SIZE_NORMAL_HINT | PROGRAM_RESIZE_INCREMENT_NORMAL_HINT | PROGRAM_ASPECT_NORMAL_HINT | PROGRAM_BASE_SIZE_NORMAL_HINT | PROGRAM_WINDOW_GRAVITY_NORMAL_HINT;
+	normalHints.x = x;
+	normalHints.y = y;
+	normalHints.width = width;
+	normalHints.height = height;
+	normalHints.minWidth = width;
+	normalHints.minHeight = height;
+	normalHints.maxWidth = width;
+	normalHints.maxHeight = height;
+	normalHints.baseWidth = width;
+	normalHints.baseHeight = height;
+	normalHints.widthInc = 0;
+	normalHints.heightInc = 0;
+	normalHints.minAspectNumerator = 1;
+	normalHints.minAspectDenominarator = 1;
+	normalHints.maxAspectNumerator = 1;
+	normalHints.maxAspectDenominarator = 1;
+	normalHints.winGravity = XCB_GRAVITY_NORTH_WEST;
+	hints.flags = INPUT_HINT | STATE_HINT;
+	hints.input = false;
+	hints.initialState = NORMAL_STATE;
+	*hostname = '\0';
+	if(gethostname(hostname, countof(hostname)) != GETHOSTNAME_SUCCESS){
+		printTitledError("get hostname error", "could not get hostname");
+	}
+	*(type + 0) = atom._NET_WM_WINDOW_TYPE_UTILITY;
+	*(state + 0) = atom._NET_WM_STATE_STICKY;
+	*(state + 1) = atom._NET_WM_STATE_ABOVE;
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_NAME, XCB_ATOM_STRING, bitsof(uint8), lengthof(PROGRAM_NAME), PROGRAM_NAME);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_ICON_NAME, XCB_ATOM_STRING, bitsof(uint8), lengthof(PROGRAM_NAME), PROGRAM_NAME);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_NORMAL_HINTS, atom.WM_SIZE_HINTS, bitsof(uint32), sizeof(normalHints) / sizeof(uint32), &normalHints);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_HINTS, atom.WM_HINTS, bitsof(uint32), sizeof(hints) / sizeof(uint32), &hints);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_CLASS, XCB_ATOM_STRING, bitsof(uint8), lengthof(PROGRAM_NAME "\0" PROGRAM_NAME "\0"), PROGRAM_NAME "\0" PROGRAM_NAME "\0");
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom.WM_CLIENT_MACHINE, XCB_ATOM_STRING, bitsof(uint8), findStringLength(hostname), hostname);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_NAME, atom.UTF8_STRING, bitsof(uint8), lengthof(PROGRAM_NAME), PROGRAM_NAME);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_ICON_NAME, atom.UTF8_STRING, bitsof(uint8), lengthof(PROGRAM_NAME), PROGRAM_NAME);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_DESKTOP, XCB_ATOM_CARDINAL, bitsof(uint32), 1, &desktop);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_WINDOW_TYPE, XCB_ATOM_ATOM, bitsof(uint32), countof(type), type);
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_STATE, XCB_ATOM_ATOM, bitsof(uint32), countof(state), state);
+	/*! xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_ICON, , , , ); */
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_PID, XCB_ATOM_CARDINAL, bitsof(uint32), 1, &pid);
 	ret;
 }
 
@@ -1769,8 +1935,9 @@ DRAWWINDOW(){
 			/*! also draw results */
 
 			if(asciiRoot.stringsFoundStart){
-				uint stringAmount = *(uint16 *)(asciiRoot.stringsFoundStart + sizeof(uint32));
-				uint8 *current = asciiRoot.stringsFoundStart + sizeof(uint32) + sizeof(uint16);
+				int stringAmount = asciiRoot.stringsFoundAmount;
+				uint8 *current = asciiRoot.stringsFoundStart;
+				int i = 0;
 
 
 
@@ -1781,18 +1948,22 @@ DRAWWINDOW(){
 
 				jmp printLoop;
 				printLoop:{
-					if(stringAmount){
+					if(i < stringAmount){
 
 
 
-						drawUTF8(current + 1, &x, &y, windowPreferences.foreground, windowPreferences.background);
+						if(i == currentSelectedResult){
+							drawUTF8(current + 1, &x, &y, windowPreferences.selectedForeground, windowPreferences.selectedBackground);
+						}else{
+							drawUTF8(current + 1, &x, &y, windowPreferences.foreground, windowPreferences.background);
+						}
 						x = 20;
 						y += 20;
 
 
 
 						current += *current + 2;
-						dec stringAmount;
+						inc i;
 						jmp printLoop;
 					}
 				}
@@ -1908,7 +2079,7 @@ DRAWUTF8(){
 	uint length;
 	if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
 		xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
-		uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+		uint32 token = pushPointer(reply, "drawUTF8() query text extents reply", iFree);
 		if(reply){
 			const int fontX = (*reply).overall_left + *x;
 			const int fontY = (*reply).font_ascent + *y;
@@ -1966,27 +2137,37 @@ GETCHARACTERSIZE(){
 	int offset1;
 	int offset2;
 	int offset3;
+	int offset4;
 	if(*p < b(10000000)){
 		ret 1 * sizeof(uint8);
 	}
+
+
+
 	if(direction == LEFT_DIRECTION){
-		offset1 = -1;
-		offset2 = -2;
-		offset3 = -3;
+		if((*(p - 1) & b(11100000)) == b(11000000) and (*(p - 0) & b(11000000)) == b(10000000)){
+			ret 2 * sizeof(uint8);
+		}
+		if((*(p - 2) & b(11110000)) == b(11100000) and (*(p - 1) & b(11000000)) == b(10000000) and (*(p - 0) & b(11000000)) == b(10000000)){
+			ret 3 * sizeof(uint8);
+		}
+		if((*(p - 3) & b(11111000)) == b(11110000) and (*(p - 2) & b(11000000)) == b(10000000) and (*(p - 1) & b(11000000)) == b(10000000) and (*(p - 0) & b(11000000)) == b(10000000)){
+			ret 4 * sizeof(uint8);
+		}
 	}else{
-		offset1 = 1;
-		offset2 = 2;
-		offset3 = 3;
+		if((*(p + 0) & b(11100000)) == b(11000000) and (*(p + 1) & b(11000000)) == b(10000000)){
+			ret 2 * sizeof(uint8);
+		}
+		if((*(p + 0) & b(11110000)) == b(11100000) and (*(p + 1) & b(11000000)) == b(10000000) and (*(p + 2) & b(11000000)) == b(10000000)){
+			ret 3 * sizeof(uint8);
+		}
+		if((*(p + 0) & b(11111000)) == b(11110000) and (*(p + 1) & b(11000000)) == b(10000000) and (*(p + 2) & b(11000000)) == b(10000000) and (*(p + 3) & b(11000000)) == b(10000000)){
+			ret 4 * sizeof(uint8);
+		}
 	}
-	if((*p & b(11000000)) == b(10000000) and (*(p + offset1) & b(11100000)) == b(11000000)){
-		ret 2 * sizeof(uint8);
-	}
-	if((*p & b(11000000)) == b(10000000) and (*(p + offset1) & b(11000000)) == b(10000000) and (*(p + offset2) & b(11110000)) == b(11100000)){
-		ret 3 * sizeof(uint8);
-	}
-	if((*p & b(11000000)) == b(10000000) and (*(p + offset1) & b(11000000)) == b(10000000) and (*(p + offset2) & b(11000000)) == b(10000000) and (*(p + offset3) & b(11111000)) == b(11110000)){
-		ret 4 * sizeof(uint8);
-	}
+
+
+
 	ret 0 * sizeof(uint8);
 }
 GETWORDSIZE(){
@@ -2088,6 +2269,8 @@ MATCHSHORTCUT(){
 
 			tab       / down    : autocomplete first, autocomplete next on repeat, make it extensive by searching for the word each time
 			shift+tab / up      : autocomplete backwards
+
+			implement a way to actually "enter" a choose command for the chosen selection.
 	*/
 
 
@@ -2113,24 +2296,16 @@ MATCHSHORTCUT(){
 		ret NONE_MATCH_SHORTCUT;
 	}
 	if(keycode == UP_KEYCODE and modifier == XCB_NONE){
-
-
-
-		/*!*/
-
-
-
+		if(currentSelectedResult > 0){
+			dec currentSelectedResult;
+		}
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == DOWN_KEYCODE and modifier == XCB_NONE){
-
-
-
-		/*!*/
-
-
-
+		if(currentSelectedResult < (int)asciiRoot.stringsFoundAmount - 1){
+			inc currentSelectedResult;
+		}
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
@@ -2200,12 +2375,12 @@ MATCHSHORTCUT(){
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == U_KEYCODE and modifier == XCB_MOD_MASK_CONTROL){
-		toUppercase();
+		toCase(UPPER_CASE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == L_KEYCODE and modifier == XCB_MOD_MASK_CONTROL){
-		toLowercase();
+		toCase(LOWER_CASE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
@@ -2230,22 +2405,22 @@ MATCHSHORTCUT(){
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == BACKSPACE_KEYCODE and modifier == XCB_NONE){
-		removeLeft(CHARACTER_MATCH_SIZE);
+		removeText(LEFT_DIRECTION, CHARACTER_MATCH_SIZE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == BACKSPACE_KEYCODE and modifier == XCB_MOD_MASK_CONTROL){
-		removeLeft(WORD_MATCH_SIZE);
+		removeText(LEFT_DIRECTION, WORD_MATCH_SIZE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == DELETE_KEYCODE and modifier == XCB_NONE){
-		removeRight(CHARACTER_MATCH_SIZE);
+		removeText(RIGHT_DIRECTION, CHARACTER_MATCH_SIZE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
 	if(keycode == DELETE_KEYCODE and modifier == XCB_MOD_MASK_CONTROL){
-		removeRight(WORD_MATCH_SIZE);
+		removeText(RIGHT_DIRECTION, WORD_MATCH_SIZE);
 		drawText();
 		ret FOUND_MATCH_SHORTCUT;
 	}
@@ -2256,6 +2431,17 @@ MATCHSHORTCUT(){
 	}
 	if(keycode == ENTER_KEYCODE and modifier == XCB_NONE){
 		exec((void *)inputForeheadStart);
+
+
+
+		/*!
+			add this to the final text to avoid issues as sudo:
+				prefix : su $(logname) -c \'
+				postfix: \'
+		*/
+
+
+
 		ret TERMINAL_MATCH_SHORTCUT;
 	}
 	if(keycode == ESCAPE_KEYCODE and modifier == XCB_NONE){
@@ -2360,6 +2546,7 @@ INSERTCHARACTER(){
 		if(flag){
 			*inputForeheadCurrent = '\0';
 		}
+		currentSelectedResult = -1;
 		ret;
 	}
 }
@@ -2489,42 +2676,32 @@ SELECTALL(){
 	}
 	ret;
 }
-TOUPPERCASE(){
+TOCASE(){
 	uint8 *current;
 	uint8 *wall;
+	int offset;
 	if(!selectedCurrent){
 		ret;
 	}
 	current = selectedCurrent;
 	wall = current + selectedSize;
-	jmp uppercaseLetterLoop;
-	uppercaseLetterLoop:{
+	if(newCase == UPPER_CASE){
+		offset = -32;
+	}else{
+		offset = 32;
+	}
+	jmp toCaseLetterLoop;
+	toCaseLetterLoop:{
 		if(current < wall){
 			if(*current < b(10000000)){
-				*current -= (*current >= 'a' and *current <= 'z') * 32;
+				if(newCase == UPPER_CASE){
+					*current += (*current >= 'a' and *current <= 'z') * offset;
+				}else{
+					*current += (*current >= 'A' and *current <= 'Z') * offset;
+				}
 			}
 			inc current;
-			jmp uppercaseLetterLoop;
-		}
-		ret;
-	}
-}
-TOLOWERCASE(){
-	uint8 *current;
-	uint8 *wall;
-	if(!selectedCurrent){
-		ret;
-	}
-	current = selectedCurrent;
-	wall = current + selectedSize;
-	jmp lowercaseLetterLoop;
-	lowercaseLetterLoop:{
-		if(current < wall){
-			if(*current < b(10000000)){
-				*current += (*current >= 'A' and *current <= 'Z') * 32;
-			}
-			inc current;
-			jmp lowercaseLetterLoop;
+			jmp toCaseLetterLoop;
 		}
 		ret;
 	}
@@ -2574,45 +2751,37 @@ PASTEBUFFER(){
 		ret;
 	}
 }
-REMOVELEFT(){
+REMOVETEXT(){
 	uint size;
+	uint8 *wall;
+	int sizeOffset;
 	if(selectedCurrent){
 		removeSelected();
 		ret;
 	}
-	if(inputForeheadCurrent == inputForeheadStart){
+	if(direction == LEFT_DIRECTION){
+		wall = inputForeheadStart;
+		sizeOffset = -1;
+	}else{
+		wall = inputForeheadStart + inputForeheadSize;
+		sizeOffset = 0;
+	}
+	if(inputForeheadCurrent == wall){
 		ret;
 	}
 	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*-*/ brk;
-		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*------*/ brk;
-		off: /*---------------------*/ /*--------------------------------------------------------------------*/ ret;
+		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(direction, inputForeheadCurrent + sizeOffset); /*-*/ brk;
+		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(direction, inputForeheadCurrent + sizeOffset); /*------*/ brk;
+		off: /*---------------------*/ /*------------------------------------------------------------------------*/ ret;
 	end
-	inputForeheadCurrent -= size;
-	shiftLeftwards(size);
-	inputForeheadSize -= size;
-	ret;
-}
-REMOVERIGHT(){
-	uint size;
-	if(selectedCurrent){
-		removeSelected();
-		ret;
+	if(direction == LEFT_DIRECTION){
+		inputForeheadCurrent -= size;
 	}
-	if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-		ret;
-	}
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(RIGHT_DIRECTION, inputForeheadCurrent); /*-*/ brk;
-		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(RIGHT_DIRECTION, inputForeheadCurrent); /*------*/ brk;
-		off: /*---------------------*/ /*-----------------------------------------------------------------*/ ret;
-	end
 	shiftLeftwards(size);
 	inputForeheadSize -= size;
 	ret;
 }
 DRAWTEXT(){
-	const uint resultAmount = 13;
 	/*! {
 		const uint amountPost = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
 		const uint amountPre = inputForeheadSize - amountPost;
@@ -2626,9 +2795,302 @@ DRAWTEXT(){
 		const char *const mode = inputMode == NORMAL_INPUT_MODE? "" : " (insert)";
 		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, inputForeheadStart, amountPost, inputForeheadCurrent, dotsPre, selectedLength, selected, dotsPost, bufferLength, buffer, isASCII, mode);
 	} */
-	getMultipleASCIIStringNodes(&asciiRoot, resultAmount, (void *)inputForeheadStart);
+	asciiRoot.stringsFoundAmount = 0;
+	getMultipleASCIIStringNodes(&asciiRoot, maximumStringAmount, (void *)inputForeheadStart);
 	configureWindow();
 	ret;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define NONE_SWITCH_COMMAND_ORIGIN /*----*/ (0)
+#define PRESS_SWITCH_COMMAND_ORIGIN /*---*/ (0)
+#define RELEASE_SWITCH_COMMAND_ORIGIN /*-*/ (1)
+#define CONFIG_SWITCH_COMMAND_ORIGIN /*--*/ (2)
+
+#define NONE_SWITCH_COMMAND /*-----------*/ (0)
+#define TYPICAL_SWITCH_COMMAND /*--------*/ (1)
+#define RESTART_SWITCH_COMMAND /*--------*/ (2)
+#define EXIT_SWITCH_COMMAND /*-----------*/ (3)
+
+#define MATCHCOMMAND() /*----------------*/ local uint8  matchCommand(const Command command, const uint8 origin)
+
+MATCHCOMMAND();
+
+MATCHCOMMAND(){
+	uint8 commandReturned = TYPICAL_SWITCH_COMMAND;
+	if(origin <= RELEASE_SWITCH_COMMAND_ORIGIN){
+		if(globalsLockCreated and pthread_rwlock_wrlock(&globalsLock) != PTHREAD_RWLOCK_WRLOCK_SUCCESS){
+			printTitledError("pthread error", "could not lock globals write lock");
+		}
+	}
+	switch origin over
+		to PRESS_SWITCH_COMMAND_ORIGIN: /*---*/ printCommand("press"); /*---*/ jmp pressCommand;
+		to RELEASE_SWITCH_COMMAND_ORIGIN: /*-*/ printCommand("release"); /*-*/ jmp releaseCommand;
+		to CONFIG_SWITCH_COMMAND_ORIGIN: /*--*/ printCommand("config"); /*--*/ jmp configCommand;
+		off: /*------------------------------*/ /*--------------------------*/ jmp emergencyExit;
+	end
+	pressCommand: switch command over
+		to NONE_COMMAND: /*--------------------*/ jmp noneCommand;
+		to EXECUTE_COMMAND: /*-----------------*/ jmp executeCommand;
+		to TO_NEXT_LETTER_COMMAND: /*----------*/ jmp toNextLetterCommand;
+		to TO_PREVIOUS_LETTER_COMMAND: /*------*/ jmp toPreviousLetterCommand;
+		to TO_NEXT_WORD_COMMAND: /*------------*/ jmp toNextWordCommand;
+		to TO_PREVIOUS_WORD_COMMAND: /*--------*/ jmp toPreviousWordCommand;
+		to TO_START_OF_LINE_COMMAND: /*--------*/ jmp toStartOfLineCommand;
+		to TO_END_OF_LINE_COMMAND: /*----------*/ jmp toEndOfLineCommand;
+		to TO_NEXT_RESULT_COMMAND: /*----------*/ jmp toNextResultCommand;
+		to TO_PREVIOUS_RESULT_COMMAND: /*------*/ jmp toPreviousResultCommand;
+		to REMOVE_LEFT_LETTER_COMMAND: /*------*/ jmp removeLeftLetterCommand;
+		to REMOVE_RIGHT_LETTER_COMMAND: /*-----*/ jmp removeRightLetterCommand;
+		to REMOVE_LEFT_WORD_COMMAND: /*--------*/ jmp removeLeftWordCommand;
+		to REMOVE_RIGHT_WORD_COMMAND: /*-------*/ jmp removeRightWordCommand;
+		to SELECT_LEFT_LETTER_COMMAND: /*------*/ jmp selectLeftLetterCommand;
+		to SELECT_RIGHT_LETTER_COMMAND: /*-----*/ jmp selectRightLetterCommand;
+		to SELECT_LEFT_WORD_COMMAND: /*--------*/ jmp selectLeftWordCommand;
+		to SELECT_RIGHT_WORD_COMMAND: /*-------*/ jmp selectRightWordCommand;
+		to SELECT_TO_START_OF_LINE_COMMAND: /*-*/ jmp selectToStartOfLineCommand;
+		to SELECT_TO_END_OF_LINE_COMMAND: /*---*/ jmp selectToEndOfLineCommand;
+		to SELECT_ALL_COMMAND: /*--------------*/ jmp selectAllCommand;
+		to COPY_SELECTION_COMMAND: /*----------*/ jmp copySelectionCommand;
+		to CUT_SELECTION_COMMAND: /*-----------*/ jmp cutSelectionCommand;
+		to PASTE_SELECTION_COMMAND: /*---------*/ jmp pasteSelectionCommand;
+		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp uppercaseSelectionCommand;
+		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp lowercaseSelectionCommand;
+		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp toggleInsertModeCommand;
+		to PICK_RESULT_COMMAND: /*-------------*/ jmp pickResultCommand;
+		to LAUNCH_COMMAND: /*------------------*/ jmp launchCommand;
+		to RESTART_COMMAND: /*-----------------*/ jmp restartCommand;
+		to EXIT_COMMAND: /*--------------------*/ jmp exitCommand;
+		off: /*--------------------------------*/ jmp unrecognizedCommand;
+	end
+	releaseCommand: switch command over
+		to NONE_COMMAND: /*--------------------*/ jmp noneCommand;
+		to EXECUTE_COMMAND: /*-----------------*/ jmp noneCommand;
+		to TO_NEXT_LETTER_COMMAND: /*----------*/ jmp noneCommand;
+		to TO_PREVIOUS_LETTER_COMMAND: /*------*/ jmp noneCommand;
+		to TO_NEXT_WORD_COMMAND: /*------------*/ jmp noneCommand;
+		to TO_PREVIOUS_WORD_COMMAND: /*--------*/ jmp noneCommand;
+		to TO_START_OF_LINE_COMMAND: /*--------*/ jmp noneCommand;
+		to TO_END_OF_LINE_COMMAND: /*----------*/ jmp noneCommand;
+		to TO_NEXT_RESULT_COMMAND: /*----------*/ jmp noneCommand;
+		to TO_PREVIOUS_RESULT_COMMAND: /*------*/ jmp noneCommand;
+		to REMOVE_LEFT_LETTER_COMMAND: /*------*/ jmp noneCommand;
+		to REMOVE_RIGHT_LETTER_COMMAND: /*-----*/ jmp noneCommand;
+		to REMOVE_LEFT_WORD_COMMAND: /*--------*/ jmp noneCommand;
+		to REMOVE_RIGHT_WORD_COMMAND: /*-------*/ jmp noneCommand;
+		to SELECT_LEFT_LETTER_COMMAND: /*------*/ jmp noneCommand;
+		to SELECT_RIGHT_LETTER_COMMAND: /*-----*/ jmp noneCommand;
+		to SELECT_LEFT_WORD_COMMAND: /*--------*/ jmp noneCommand;
+		to SELECT_RIGHT_WORD_COMMAND: /*-------*/ jmp noneCommand;
+		to SELECT_TO_START_OF_LINE_COMMAND: /*-*/ jmp noneCommand;
+		to SELECT_TO_END_OF_LINE_COMMAND: /*---*/ jmp noneCommand;
+		to SELECT_ALL_COMMAND: /*--------------*/ jmp noneCommand;
+		to COPY_SELECTION_COMMAND: /*----------*/ jmp noneCommand;
+		to CUT_SELECTION_COMMAND: /*-----------*/ jmp noneCommand;
+		to PASTE_SELECTION_COMMAND: /*---------*/ jmp noneCommand;
+		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp noneCommand;
+		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp noneCommand;
+		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp noneCommand;
+		to PICK_RESULT_COMMAND: /*-------------*/ jmp noneCommand;
+		to LAUNCH_COMMAND: /*------------------*/ jmp noneCommand;
+		to RESTART_COMMAND: /*-----------------*/ jmp noneCommand;
+		to EXIT_COMMAND: /*--------------------*/ jmp noneCommand;
+		off: /*--------------------------------*/ jmp unrecognizedCommand;
+	end
+	configCommand: switch command over
+		to NONE_COMMAND: /*--------------------*/ jmp noneCommand;
+		to EXECUTE_COMMAND: /*-----------------*/ jmp executeCommand;
+		to TO_NEXT_LETTER_COMMAND: /*----------*/ jmp toNextLetterCommand;
+		to TO_PREVIOUS_LETTER_COMMAND: /*------*/ jmp toPreviousLetterCommand;
+		to TO_NEXT_WORD_COMMAND: /*------------*/ jmp toNextWordCommand;
+		to TO_PREVIOUS_WORD_COMMAND: /*--------*/ jmp toPreviousWordCommand;
+		to TO_START_OF_LINE_COMMAND: /*--------*/ jmp toStartOfLineCommand;
+		to TO_END_OF_LINE_COMMAND: /*----------*/ jmp toEndOfLineCommand;
+		to TO_NEXT_RESULT_COMMAND: /*----------*/ jmp toNextResultCommand;
+		to TO_PREVIOUS_RESULT_COMMAND: /*------*/ jmp toPreviousResultCommand;
+		to REMOVE_LEFT_LETTER_COMMAND: /*------*/ jmp removeLeftLetterCommand;
+		to REMOVE_RIGHT_LETTER_COMMAND: /*-----*/ jmp removeRightLetterCommand;
+		to REMOVE_LEFT_WORD_COMMAND: /*--------*/ jmp removeLeftWordCommand;
+		to REMOVE_RIGHT_WORD_COMMAND: /*-------*/ jmp removeRightWordCommand;
+		to SELECT_LEFT_LETTER_COMMAND: /*------*/ jmp selectLeftLetterCommand;
+		to SELECT_RIGHT_LETTER_COMMAND: /*-----*/ jmp selectRightLetterCommand;
+		to SELECT_LEFT_WORD_COMMAND: /*--------*/ jmp selectLeftWordCommand;
+		to SELECT_RIGHT_WORD_COMMAND: /*-------*/ jmp selectRightWordCommand;
+		to SELECT_TO_START_OF_LINE_COMMAND: /*-*/ jmp selectToStartOfLineCommand;
+		to SELECT_TO_END_OF_LINE_COMMAND: /*---*/ jmp selectToEndOfLineCommand;
+		to SELECT_ALL_COMMAND: /*--------------*/ jmp selectAllCommand;
+		to COPY_SELECTION_COMMAND: /*----------*/ jmp copySelectionCommand;
+		to CUT_SELECTION_COMMAND: /*-----------*/ jmp cutSelectionCommand;
+		to PASTE_SELECTION_COMMAND: /*---------*/ jmp pasteSelectionCommand;
+		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp uppercaseSelectionCommand;
+		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp lowercaseSelectionCommand;
+		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp toggleInsertModeCommand;
+		to PICK_RESULT_COMMAND: /*-------------*/ jmp pickResultCommand;
+		to LAUNCH_COMMAND: /*------------------*/ jmp launchCommand;
+		to RESTART_COMMAND: /*-----------------*/ jmp restartCommand;
+		to EXIT_COMMAND: /*--------------------*/ jmp exitCommand;
+		off: /*--------------------------------*/ jmp unrecognizedCommand;
+	end
+	noneCommand:{
+		jmp emergencyExit;
+	}
+	executeCommand:{
+		exec((*eventModifierNode).string);
+		jmp emergencyExit;
+	}
+	toNextLetterCommand:{
+		/*! toNextLetterCommand(); */
+		jmp emergencyExit;
+	}
+	toPreviousLetterCommand:{
+		/*! toPreviousLetterCommand(); */
+		jmp emergencyExit;
+	}
+	toNextWordCommand:{
+		/*! toNextWordCommand(); */
+		jmp emergencyExit;
+	}
+	toPreviousWordCommand:{
+		/*! toPreviousWordCommand(); */
+		jmp emergencyExit;
+	}
+	toStartOfLineCommand:{
+		/*! toStartOfLineCommand(); */
+		jmp emergencyExit;
+	}
+	toEndOfLineCommand:{
+		/*! toEndOfLineCommand(); */
+		jmp emergencyExit;
+	}
+	toNextResultCommand:{
+		/*! toNextResultCommand(); */
+		jmp emergencyExit;
+	}
+	toPreviousResultCommand:{
+		/*! toPreviousResultCommand(); */
+		jmp emergencyExit;
+	}
+	removeLeftLetterCommand:{
+		/*! removeLeftLetterCommand(); */
+		jmp emergencyExit;
+	}
+	removeRightLetterCommand:{
+		/*! removeRightLetterCommand(); */
+		jmp emergencyExit;
+	}
+	removeLeftWordCommand:{
+		/*! removeLeftWordCommand(); */
+		jmp emergencyExit;
+	}
+	removeRightWordCommand:{
+		/*! removeRightWordCommand(); */
+		jmp emergencyExit;
+	}
+	selectLeftLetterCommand:{
+		/*! selectLeftLetterCommand(); */
+		jmp emergencyExit;
+	}
+	selectRightLetterCommand:{
+		/*! selectRightLetterCommand(); */
+		jmp emergencyExit;
+	}
+	selectLeftWordCommand:{
+		/*! selectLeftWordCommand(); */
+		jmp emergencyExit;
+	}
+	selectRightWordCommand:{
+		/*! selectRightWordCommand(); */
+		jmp emergencyExit;
+	}
+	selectToStartOfLineCommand:{
+		/*! selectToStartOfLineCommand(); */
+		jmp emergencyExit;
+	}
+	selectToEndOfLineCommand:{
+		/*! selectToEndOfLineCommand(); */
+		jmp emergencyExit;
+	}
+	selectAllCommand:{
+		/*! selectAllCommand(); */
+		jmp emergencyExit;
+	}
+	copySelectionCommand:{
+		/*! copySelectionCommand(); */
+		jmp emergencyExit;
+	}
+	cutSelectionCommand:{
+		/*! cutSelectionCommand(); */
+		jmp emergencyExit;
+	}
+	pasteSelectionCommand:{
+		/*! pasteSelectionCommand(); */
+		jmp emergencyExit;
+	}
+	uppercaseSelectionCommand:{
+		/*! uppercaseSelectionCommand(); */
+		jmp emergencyExit;
+	}
+	lowercaseSelectionCommand:{
+		/*! lowercaseSelectionCommand(); */
+		jmp emergencyExit;
+	}
+	toggleInsertModeCommand:{
+		/*! toggleInsertModeCommand(); */
+		jmp emergencyExit;
+	}
+	pickResultCommand:{
+		/*! pickResultCommand(); */
+		jmp emergencyExit;
+	}
+	launchCommand:{
+		/*! launchCommand(); */
+		jmp emergencyExit;
+	}
+	restartCommand:{
+		commandReturned = RESTART_SWITCH_COMMAND;
+		jmp emergencyExit;
+	}
+	exitCommand:{
+		commandReturned = EXIT_SWITCH_COMMAND;
+		jmp emergencyExit;
+	}
+	unrecognizedCommand:{
+		printTitledValuedError("command error", "executed unrecognized command with type", command);
+		jmp emergencyExit;
+	}
+	emergencyExit:{
+		if(origin <= RELEASE_SWITCH_COMMAND_ORIGIN){
+			if(globalsLockCreated and pthread_rwlock_unlock(&globalsLock) != PTHREAD_RWLOCK_UNLOCK_SUCCESS){
+				printTitledError("pthread error", "could not unlock globals write lock");
+			}
+		}
+		ret commandReturned;
+	}
 }
 
 
@@ -3268,7 +3730,9 @@ int main(int argumentAmount, const char *const *argument){
 		jmp selectExtraInput;
 	}
 	selectExtraInput:{
-		xcb_grab_keyboard_reply_t *reply;
+		xcb_grab_keyboard_cookie_t keyboardCookie;
+		xcb_grab_pointer_cookie_t pointerCookie;
+		void *reply;
 		uint32 token;
 		if(!XSupportsLocale()){
 			printTitledError("locale error", "current X locale not supported");
@@ -3278,13 +3742,45 @@ int main(int argumentAmount, const char *const *argument){
 		}elif(!(ic = XCreateIC(im, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, (*screen).root, NULL))){
 			printTitledError("input context error", "could not open input context");
 		}
-		reply = xcb_wait_for_reply(connection, xcb_grab_keyboard_unchecked(connection, true, (*screen).root, getTimestamp(), XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC), NULL);
+
+
+
+		/*!*/
+
+		keyboardCookie = xcb_grab_keyboard_unchecked(connection, true, (*screen).root, getTimestamp(), XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC);
+
+
+
+		pointerCookie = xcb_grab_pointer_unchecked(connection, true, (*screen).root, XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, getTimestamp());
+
+
+
+		reply = xcb_wait_for_reply(connection, keyboardCookie, NULL);
 		token = pushPointer(reply, "grab keyboard reply", iFree);
 		if(!reply){
 			printTitledError("select input error", "could not grab keyboard");
 		}else{
+			const uint8 status = (*(xcb_grab_keyboard_reply_t *)reply).status;
 			free(reply);
 			popPointer(token);
+			if(status != XCB_GRAB_STATUS_SUCCESS){
+				printTitledError("select input error", "could not grab keyboard");
+			}
+		}
+
+
+
+		reply = xcb_wait_for_reply(connection, pointerCookie, NULL);
+		token = pushPointer(reply, "grab pointer reply", iFree);
+		if(!reply){
+			printTitledError("select input error", "could not grab pointer");
+		}else{
+			const uint8 status = (*(xcb_grab_pointer_reply_t *)reply).status;
+			free(reply);
+			popPointer(token);
+			if(status != XCB_GRAB_STATUS_SUCCESS){
+				printTitledError("select input error", "could not grab pointer");
+			}
 		}
 		jmp setupScreenProfile;
 	}
@@ -3496,10 +3992,9 @@ int main(int argumentAmount, const char *const *argument){
 		selectedCurrent = NULL;
 		bufferSize = 0;
 		inputMode = NORMAL_INPUT_MODE;
-		drawText();
+		currentSelectedResult = -1; /*!*/
 		getModifierKeycodes();
-
-
+		drawText();
 
 
 
@@ -3565,6 +4060,10 @@ int main(int argumentAmount, const char *const *argument){
 
 
 
+		maximumStringAmount = 13;
+
+
+
 		mapped = false;
 		mapWindow();
 
@@ -3618,9 +4117,7 @@ int main(int argumentAmount, const char *const *argument){
 	}
 	switchEvent:{
 		#define XCB_ONE /*-*/ (1)
-/*!
 		printXEvent(eventName);
-*/
 		switch (*event).response_type & ~b(10000000) over
 			to XCB_NONE: /*--------------*/ jmp errorEvent;
 			to XCB_ONE: /*---------------*/ jmp unrecognizedEvent;
@@ -3673,7 +4170,7 @@ int main(int argumentAmount, const char *const *argument){
 		XEvent xlibEvent;
 		bool usingXlib;
 		if(getNextShortcut(&keycodeShortcut, (*e).detail, (*e).state, &keyPressNextOffset)){
-			jmp switchCommandDown;
+			jmp matchCommandPress;
 		}
 		switch matchShortcut((*e).detail, (*e).state) over
 			to FOUND_MATCH_SHORTCUT: /*----*/ jmp eventLoop;
@@ -3752,7 +4249,7 @@ int main(int argumentAmount, const char *const *argument){
 			}
 		}
 		if(getNextShortcut(&keycodeShortcut, (*e).detail, (*e).state, &keyReleaseNextOffset)){
-			jmp switchCommandUp;
+			jmp matchCommandRelease;
 		}
 		jmp eventLoop;
 		#undef  e
@@ -3760,7 +4257,10 @@ int main(int argumentAmount, const char *const *argument){
 	buttonPressEvent:{
 		#define e /*-*/ ((xcb_button_press_event_t *)event)
 		if(getNextShortcut(&buttonShortcut, (*e).detail, (*e).state, &buttonPressNextOffset)){
-			jmp switchCommandDown;
+			jmp matchCommandPress;
+		}
+		if((*e).child != window){
+			jmp mainEmergencyExit;
 		}
 		jmp eventLoop;
 		#undef  e
@@ -3768,17 +4268,60 @@ int main(int argumentAmount, const char *const *argument){
 	buttonReleaseEvent:{
 		#define e /*-*/ ((xcb_button_release_event_t *)event)
 		if(getNextShortcut(&buttonShortcut, (*e).detail, (*e).state, &buttonReleaseNextOffset)){
-			jmp switchCommandUp;
+			jmp matchCommandRelease;
 		}
 		jmp eventLoop;
 		#undef  e
 	}
+	matchCommandPress: switch matchCommand((*eventModifierNode).command, PRESS_SWITCH_COMMAND_ORIGIN) over
+		to TYPICAL_SWITCH_COMMAND: /*-------*/ jmp eventLoopCheckShortcuts;
+		to RESTART_SWITCH_COMMAND: /*-------*/ jmp readConfig;
+		to EXIT_SWITCH_COMMAND: /*----------*/ jmp mainEmergencyExit;
+		off: /*-----------------------------*/ jmp eventLoopCheckShortcuts;
+	end
+	matchCommandRelease: switch matchCommand((*eventModifierNode).command, RELEASE_SWITCH_COMMAND_ORIGIN) over
+		to TYPICAL_SWITCH_COMMAND: /*-------*/ jmp eventLoopCheckShortcuts;
+		to RESTART_SWITCH_COMMAND: /*-------*/ jmp readConfig;
+		to EXIT_SWITCH_COMMAND: /*----------*/ jmp mainEmergencyExit;
+		off: /*-----------------------------*/ jmp eventLoopCheckShortcuts;
+	end
 	propertyNotifyEvent:{
 		#define e /*-*/ ((xcb_property_notify_event_t *)event)
 
 
 
 		/*!*/
+
+
+
+		/*! if specific property event came to enable keyboard grabbing, grab keyboard */
+
+		/*!{
+			uint i = 0;
+			jmp loopo;
+			loopo:{
+				if(i < 1000){
+					void *reply = xcb_wait_for_reply(connection, xcb_grab_keyboard_unchecked(connection, true, (*screen).root, getTimestamp(), XCB_GRAB_MODE_ASYNC, XCB_GRAB_MODE_ASYNC), NULL);
+					uint32 token = pushPointer(reply, "grab keyboard reply", iFree);
+					if(!reply){
+						printTitledError("select input error", "could not grab keyboard");
+					}else{
+						const uint8 status = (*(xcb_grab_keyboard_reply_t *)reply).status;
+						free(reply);
+						popPointer(token);
+						if(status == XCB_GRAB_STATUS_SUCCESS){
+							fprintf(stdout, "\n\n\nsuccess after %u\n\n\n\n", i);
+							jmp loopoExit;
+						}
+					}
+					inc i;
+					jmp loopo;
+				}
+				fprintf(stdout, "\n\n\nfailure after %u\n\n\n\n", i);
+				printTitledError("select input error", "could not grab keyboard");
+			}
+			loopoExit:{}
+		}*/
 
 
 
@@ -3840,52 +4383,6 @@ int main(int argumentAmount, const char *const *argument){
 	unhandledEvent:{
 		printTitledValuedError("X event error", "unhandled event with type", (*event).response_type & ~b(10000000));
 		jmp eventLoop;
-	}
-	switchCommandDown:{
-		printCommand();
-		switch (*eventModifierNode).command over
-			to NONE_COMMAND: /*----*/ jmp noneCommandDown;
-			to EXECUTE_COMMAND: /*-*/ jmp executeCommandDown;
-			to RESTART_COMMAND: /*-*/ jmp restartCommandDown;
-			to EXIT_COMMAND: /*----*/ jmp exitCommandDown;
-			off: /*----------------*/ jmp unrecognizedCommand;
-		end
-	}
-	noneCommandDown:{
-		jmp eventLoopCheckShortcuts;
-	}
-	executeCommandDown:{
-		if(globalsLockCreated and pthread_rwlock_wrlock(&globalsLock) != PTHREAD_RWLOCK_WRLOCK_SUCCESS){
-			printTitledError("pthread error", "could not lock globals write lock");
-		}
-		exec((*eventModifierNode).string);
-		if(globalsLockCreated and pthread_rwlock_unlock(&globalsLock) != PTHREAD_RWLOCK_UNLOCK_SUCCESS){
-			printTitledError("pthread error", "could not unlock globals write lock");
-		}
-		jmp eventLoopCheckShortcuts;
-	}
-	restartCommandDown:{
-		jmp readConfig;
-	}
-	exitCommandDown:{
-		jmp mainEmergencyExit;
-	}
-	switchCommandUp:{
-		printCommand();
-		switch (*eventModifierNode).command over
-			to NONE_COMMAND: /*----*/ jmp noneCommandUp;
-			to EXECUTE_COMMAND: /*-*/ jmp noneCommandUp;
-			to RESTART_COMMAND: /*-*/ jmp noneCommandUp;
-			to EXIT_COMMAND: /*----*/ jmp noneCommandUp;
-			off: /*----------------*/ jmp unrecognizedCommand;
-		end
-	}
-	noneCommandUp:{
-		jmp eventLoopCheckShortcuts;
-	}
-	unrecognizedCommand:{
-		printTitledValuedError("command error", "executed unrecognized command with type", (*eventModifierNode).command);
-		jmp eventLoopCheckShortcuts;
 	}
 	mainEmergencyExit:{
 		exitCommand();
@@ -4748,6 +5245,7 @@ SETCONFIGVARIABLES(){
 	windowPreferences.selectedBackground = 0x00000000;
 	whichMonitor = NONE_WHICH_MONITOR;
 	font = XCB_NONE;
+	maximumStringAmount = 0;
 	ret;
 }
 READCONFIG(){
@@ -5680,7 +6178,13 @@ READCONFIG(){
 		}
 		if(instructionStart == setInstruction){
 			switch name0Return over
+
+
+
 				/*!*/
+
+
+
 				off: /*-*/ brk;
 			end
 		}
@@ -5741,31 +6245,26 @@ READCONFIG(){
 			end
 		}
 		if(instructionStartCopy == doInstruction){
-			switch name0Return over
-				to EXECUTE_COMMAND:{
-					exec(execute0Return);
+			switch matchCommand(name0Return, CONFIG_SWITCH_COMMAND_ORIGIN) over
+				to TYPICAL_SWITCH_COMMAND:{
 					jmp getStatementStart;
 				}
-				to RESTART_COMMAND:{
+				to RESTART_SWITCH_COMMAND:{
 					if(getConfigChar == getSharedCharacter){
 						restartCommand(true);
 						/*! should probably also actually restart, not just free old resources. */
 					}
 					jmp getStatementStart;
 				}
-				to EXIT_COMMAND:{
+				to EXIT_SWITCH_COMMAND:{
 					exitCommand();
 					jmp getStatementStart;
 				}
 				off:{
+					printConfigError("config error", "do subinstruction not implemented yet", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, instructionStart, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
 					jmp getStatementStart;
 				}
 			end
-			jmp printDoSubinstructionNotImplemented;
-			printDoSubinstructionNotImplemented:{
-				printConfigError("config error", "do subinstruction not implemented yet", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, instructionStart, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
-				jmp getStatementStart;
-			}
 		}
 		if(instructionStartCopy == setInstruction){
 			switch name0Return over
