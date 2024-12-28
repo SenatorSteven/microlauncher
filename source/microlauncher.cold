@@ -219,6 +219,34 @@ SOFTWARE. */
 	#define EXIT_COMMAND /*--------------------------*/ (30)
 
 	#define NONE_VARIABLE /*-------------------------*/ (0)
+	#define WINDOW_X_VARIABLE /*---------------------*/ (1)
+	#define WINDOW_Y_VARIABLE /*---------------------*/ (2)
+	#define WINDOW_X_OFFSET_VARIABLE /*--------------*/ (3)
+	#define WINDOW_Y_OFFSET_VARIABLE /*--------------*/ (4)
+	#define WINDOW_WIDTH_VARIABLE /*-----------------*/ (5)
+	#define WINDOW_HEIGHT_VARIABLE /*----------------*/ (6)
+	#define WINDOW_HORIZONTAL_ALIGNMENT_VARIABLE /*--*/ (7)
+	#define WINDOW_VERTICAL_ALIGNMENT_VARIABLE /*----*/ (8)
+	#define WINDOW_CORNER_RADIUS_VARIABLE /*---------*/ (9)
+	#define WINDOW_FOREGROUND_VARIABLE /*------------*/ (10)
+	#define WINDOW_BACKGROUND_VARIABLE /*------------*/ (11)
+	#define WINDOW_SELECTED_FOREGROUND_VARIABLE /*---*/ (12)
+	#define WINDOW_SELECTED_BACKGROUND_VARIABLE /*---*/ (13)
+	#define RESULT_X_VARIABLE /*---------------------*/ (14)
+	#define RESULT_Y_VARIABLE /*---------------------*/ (15)
+	#define RESULT_X_OFFSET_VARIABLE /*--------------*/ (16)
+	#define RESULT_Y_OFFSET_VARIABLE /*--------------*/ (17)
+	#define RESULT_WIDTH_VARIABLE /*-----------------*/ (18)
+	#define RESULT_HEIGHT_VARIABLE /*----------------*/ (19)
+	#define RESULT_HORIZONTAL_ALIGNMENT_VARIABLE /*--*/ (20)
+	#define RESULT_VERTICAL_ALIGNMENT_VARIABLE /*----*/ (21)
+	#define RESULT_PADDING_VARIABLE /*---------------*/ (22)
+	#define RESULT_MARGIN_VARIABLE /*----------------*/ (23)
+	#define RESULT_GAP_VARIABLE /*-------------------*/ (24)
+	#define RESULT_FOREGROUND_VARIABLE /*------------*/ (25)
+	#define RESULT_BACKGROUND_VARIABLE /*------------*/ (26)
+	#define RESULT_SELECTED_FOREGROUND_VARIABLE /*---*/ (27)
+	#define RESULT_SELECTED_BACKGROUND_VARIABLE /*---*/ (28)
 
 	#define EMPTY_SHARED_STATUS /*-------------------*/ (0)
 	#define FULL_SHARED_STATUS /*--------------------*/ (1)
@@ -593,7 +621,10 @@ SOFTWARE. */
 		uint8 /*---------------*/ heightType;
 		uint8 /*---------------*/ horizontalAlignment;
 		uint8 /*---------------*/ verticalAlignment;
-		uint32 /*--------------*/ radius;
+		uint32 /*--------------*/ padding;
+		uint32 /*--------------*/ margin;
+		uint32 /*--------------*/ gap;
+		uint32 /*--------------*/ cornerRadius;
 		uint8 /*---------------*/ cornerUsed;
 		uint8 /*---------------*/ pad0[3];
 		uint32 /*--------------*/ foreground;
@@ -674,6 +705,19 @@ SOFTWARE. */
 	local StringNodeRoot /*---------------*/ variableRoot;
 	local StringNodeRoot /*---------------*/ modifierRoot;
 	local StringNodeRoot /*---------------*/ macroRoot;
+
+
+
+	/*!*/
+
+	local StringNodeRoot /*---------------*/ horizontalAlignmentRoot;
+	local StringNodeRoot /*---------------*/ verticalAlignmentRoot;
+	local StringNodeRoot /*---------------*/ numberTypeRoot;
+	local StringNodeRoot /*---------------*/ whichMonitorRoot;
+	local StringNodeRoot /*---------------*/ cornerRoot;
+
+
+
 	local ShortcutNodeRoot /*-------------*/ keycodeShortcut;
 	local ShortcutNodeRoot /*-------------*/ buttonShortcut;
 	local int /*--------------------------*/ keyPressNextOffset;
@@ -806,6 +850,47 @@ SOFTWARE. */
 		, NULL
 	};
 
+
+
+	/*!*/
+
+	local const char *const /*------------*/ numberTypeList[] = {
+		  "none"
+		, "integer"
+		, "percentage"
+		, "millimeter"
+		, NULL
+	};
+	local const char *const /*------------*/ horizontalAlignmentList[] = {
+		  "none"
+		, "left"
+		, "center"
+		, "right"
+		, NULL
+	};
+	local const char *const /*------------*/ verticalAlignmentList[] = {
+		  "none"
+		, "top"
+		, "center"
+		, "bottom"
+		, NULL
+	};
+	local const char *const /*------------*/ whichMonitorList[] = {
+		  "none"
+		, "pointer"
+		, "focused-window"
+		, NULL
+	};
+	local const char *const /*------------*/ cornerList[] = {
+		  "top-left"
+		, "top-right"
+		, "bottom-left"
+		, "bottom-right"
+		, NULL
+	};
+
+
+
 	local const Instruction /*------------*/ helpInstruction[] = {END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ expandInstruction[] = {END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ contractInstruction[] = {END_INSTRUCTION_TYPE};
@@ -814,35 +899,40 @@ SOFTWARE. */
 	local const Instruction /*------------*/ doInstruction[] = {NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ setInstruction[] = {NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ grabKeycodeInstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
-
-
-
-
-
-
-
-
-
-#ifdef a
-	/*!*/
-
-	local const Instruction /*------------*/ grabKeysymInstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
-#endif
-
-
-
-
-
-
-
-
-
 	local const Instruction /*------------*/ grabButtonInstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ ungrabKeycodeInstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ ungrabButtonInstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ stopInstruction[] = {END_INSTRUCTION_TYPE};
 
 	local const Instruction /*------------*/ executeDoSubinstruction[] = {NAME_INSTRUCTION_TYPE, EXECUTE_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowXSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowYSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowXOffsetSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowYOffsetSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowWidthSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowHeightSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowHorizontalAlignmentSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowVerticalAlignmentSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowCornerRadiusSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_LIST_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowForegroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowBackgroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowSelectedForegroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ windowSelectedBackgroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultXSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultYSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultXOffsetSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultYOffsetSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultWidthSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultHeightSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultHorizontalAlignmentSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultVerticalAlignmentSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultPaddingSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultMarginSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultGapSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultForegroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultBackgroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultSelectedForegroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultSelectedBackgroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ executeGrabKeycodeSubinstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, EXECUTE_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ executeGrabButtonSubinstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, EXECUTE_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 
@@ -860,6 +950,36 @@ SOFTWARE. */
 	local StringNodeRoot *const *const /*-*/ stopInstructionData = NULL;
 
 	local StringNodeRoot *const /*--------*/ executeDoSubinstructionData[] = {&commandRoot};
+	local StringNodeRoot *const /*--------*/ windowXSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowYSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowXOffsetSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowYOffsetSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowWidthSetSubinstructionData[] = {&variableRoot, &numberTypeRoot};
+	local StringNodeRoot *const /*--------*/ windowHeightSetSubinstructionData[] = {&variableRoot, &numberTypeRoot};
+	local StringNodeRoot *const /*--------*/ windowHorizontalAlignmentSetSubinstructionData[] = {&variableRoot, &horizontalAlignmentRoot};
+	local StringNodeRoot *const /*--------*/ windowVerticalAlignmentSetSubinstructionData[] = {&variableRoot, &verticalAlignmentRoot};
+	local StringNodeRoot *const /*--------*/ windowCornerRadiusSetSubinstructionData[] = {&variableRoot, &cornerRoot};
+	local StringNodeRoot *const /*--------*/ windowForegroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowBackgroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowSelectedForegroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ windowSelectedBackgroundSetSubinstructionData[] = {&variableRoot};
+
+	local StringNodeRoot *const /*--------*/ resultXSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultYSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultXOffsetSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultYOffsetSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultWidthSetSubinstructionData[] = {&variableRoot, &numberTypeRoot};
+	local StringNodeRoot *const /*--------*/ resultHeightSetSubinstructionData[] = {&variableRoot, &numberTypeRoot};
+	local StringNodeRoot *const /*--------*/ resultHorizontalAlignmentSetSubinstructionData[] = {&variableRoot, &horizontalAlignmentRoot};
+	local StringNodeRoot *const /*--------*/ resultVerticalAlignmentSetSubinstructionData[] = {&variableRoot, &verticalAlignmentRoot};
+	local StringNodeRoot *const /*--------*/ resultPaddingSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultMarginSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultGapSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultForegroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultBackgroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultSelectedForegroundSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultSelectedBackgroundSetSubinstructionData[] = {&variableRoot};
+
 	local StringNodeRoot *const /*--------*/ executeGrabKeycodeSubinstructionData[] = {&modifierRoot, &commandRoot};
 	local StringNodeRoot *const /*--------*/ executeGrabButtonSubinstructionData[] = {&modifierRoot, &commandRoot};
 
@@ -1049,6 +1169,7 @@ SOFTWARE. */
 #define SHIFTRIGHTWARDS() /*---------------------*/ local void             shiftRightwards(const uint distance)
 #define CHANGEMODE() /*--------------------------*/ local void             changeMode(void)
 #define INSERTCHARACTER() /*---------------------*/ local void             insertCharacter(const uint count, const uint8 *const buffer)
+
 #define GOTOLEFT() /*----------------------------*/ local void             gotoLeft(const uint8 matchSize)
 #define GOTORIGHT() /*---------------------------*/ local void             gotoRight(const uint8 matchSize)
 #define GOTOSTART() /*---------------------------*/ local void             gotoStart(void)
@@ -1095,10 +1216,11 @@ SOFTWARE. */
 	local int /*-----------------*/ currentSelectedResult;
 
 /*! config */
-	local uint8 /*---------------*/ whichMonitor;
 	local ElementPreferences /*--*/ windowPreferences;
+	local ElementPreferences /*--*/ resultPreferences;
 	local xcb_pixmap_t /*--------*/ windowCirclePixmap;
 	local xcb_font_t /*----------*/ font;
+	local uint8 /*---------------*/ whichMonitor;
 
 CONFIGUREWINDOW();
 UPDATEWINDOW();
@@ -1178,9 +1300,9 @@ MAPWINDOW(){
 			valueList.width = rectangle.width;
 			valueList.height = rectangle.height;
 			xcb_configure_window(connection, window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_STACK_MODE, &valueList);
-			setWindowProperties(window, NULL, valueList.x, valueList.y, valueList.width, valueList.height);
+			setWindowProperties(window, rectangle.monitor, valueList.x, valueList.y, valueList.width, valueList.height);
 			xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, atom._NET_WM_USER_TIME, XCB_ATOM_CARDINAL, bitsof(uint32), 1, &userTime);
-			drawWindow(window, monitor, &rectangle);
+			drawWindow(window, rectangle.monitor, &rectangle);
 			xcb_map_window(connection, window);
 			mapped = true;
 		}
@@ -1203,7 +1325,7 @@ CONFIGUREWINDOW(){
 			valueList.width = rectangle.width;
 			valueList.height = rectangle.height;
 			xcb_configure_window(connection, window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, &valueList);
-			setWindowProperties(window, NULL, valueList.x, valueList.y, valueList.width, valueList.height);
+			setWindowProperties(window, rectangle.monitor, valueList.x, valueList.y, valueList.width, valueList.height);
 			drawWindow(window, rectangle.monitor, &rectangle);
 		}
 	}
@@ -1355,30 +1477,13 @@ DRAWWINDOW(){
 		fillDrawable(pixmap, gc, 0, 0, (*windowRectangle).width, (*windowRectangle).height, windowPreferences.background);
 		if(windowCirclePixmap){
 			const uint8 cornerUsed = windowPreferences.cornerUsed;
-			const uint radius = windowPreferences.radius;
+			const uint radius = windowPreferences.cornerRadius;
 			const uint size = radius + 1;
 			if(cornerUsed & TOP_LEFT_CORNER_USED) /*-----*/ xcb_copy_area(connection, windowCirclePixmap, pixmap, gc, 0     , 0     , 0                              , 0                               , size, size);
 			if(cornerUsed & TOP_RIGHT_CORNER_USED) /*----*/ xcb_copy_area(connection, windowCirclePixmap, pixmap, gc, radius, 0     , (*windowRectangle).width - size, 0                               , size, size);
 			if(cornerUsed & BOTTOM_LEFT_CORNER_USED) /*--*/ xcb_copy_area(connection, windowCirclePixmap, pixmap, gc, 0     , radius, 0                              , (*windowRectangle).height - size, size, size);
 			if(cornerUsed & BOTTOM_RIGHT_CORNER_USED) /*-*/ xcb_copy_area(connection, windowCirclePixmap, pixmap, gc, radius, radius, (*windowRectangle).width - size, (*windowRectangle).height - size, size, size);
 		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1465,8 +1570,6 @@ DRAWWINDOW(){
 
 
 
-			/*! also draw results */
-
 			if(asciiRoot.stringsFoundStart){
 				int stringAmount = asciiRoot.stringsFoundAmount;
 				uint8 *current = asciiRoot.stringsFoundStart;
@@ -1500,32 +1603,8 @@ DRAWWINDOW(){
 						jmp printLoop;
 					}
 				}
-				free(asciiRoot.stringsFoundStart);
-				popPointer(asciiRoot.stringsFoundToken);
-				asciiRoot.stringsFoundStart = NULL;
-				asciiRoot.stringsFoundToken = 0;
 			}
 		}
-
-		/*!*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1540,6 +1619,30 @@ DRAWWINDOW(){
 		}
 		ret;
 	}
+}
+DRAWUTF8(){
+	uint16 ucs2Start[4096];
+	uint32 valueList[2];
+	uint length;
+	if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
+		xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+		uint32 token = pushPointer(reply, "drawUTF8() query text extents reply", iFree);
+		if(reply){
+			const int fontX = (*reply).overall_left + *x;
+			const int fontY = (*reply).font_ascent + *y;
+			const uint fontWidth = (*reply).overall_width;
+			const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+			(void)fontHeight;
+			*(valueList + 0) = foreground;
+			*(valueList + 1) = background;
+			xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
+			xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
+			free(reply);
+			popPointer(token);
+			*x += fontWidth;
+		}
+	}
+	ret;
 }
 GETRECTANGLE(){
 	const Monitor *monitor;
@@ -1619,30 +1722,6 @@ GETTYPEDNUMBER(){
 			ret 0;
 		}
 	end
-}
-DRAWUTF8(){
-	uint16 ucs2Start[4096];
-	uint32 valueList[2];
-	uint length;
-	if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
-		xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
-		uint32 token = pushPointer(reply, "drawUTF8() query text extents reply", iFree);
-		if(reply){
-			const int fontX = (*reply).overall_left + *x;
-			const int fontY = (*reply).font_ascent + *y;
-			const uint fontWidth = (*reply).overall_width;
-			const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
-			(void)fontHeight;
-			*(valueList + 0) = foreground;
-			*(valueList + 1) = background;
-			xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
-			xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
-			free(reply);
-			popPointer(token);
-			*x += fontWidth;
-		}
-	}
-	ret;
 }
 
 
@@ -2212,6 +2291,19 @@ int main(int argumentAmount, const char *const *argument){
 		setStringRoot(&variableRoot);
 		setStringRoot(&modifierRoot);
 		setStringRoot(&macroRoot);
+
+
+
+		/*!*/
+
+		setStringRoot(&horizontalAlignmentRoot);
+		setStringRoot(&verticalAlignmentRoot);
+		setStringRoot(&numberTypeRoot);
+		setStringRoot(&whichMonitorRoot);
+		setStringRoot(&cornerRoot);
+
+
+
 		setShortcutRoot(&keycodeShortcut);
 		setShortcutRoot(&buttonShortcut);
 		setASCIIStringRoot(&asciiRoot);
@@ -2945,6 +3037,7 @@ int main(int argumentAmount, const char *const *argument){
 		jmp storeMonitorsExit;
 	}
 	storeMonitorsExit:{
+		configureWindow();
 		if(globalsLockCreated and pthread_rwlock_unlock(&globalsLock) != PTHREAD_RWLOCK_UNLOCK_SUCCESS){
 			printTitledError("pthread error", "could not unlock globals write lock");
 		}
@@ -2962,6 +3055,19 @@ int main(int argumentAmount, const char *const *argument){
 		bulkInsertString(&variableRoot, variableList);
 		bulkInsertString(&modifierRoot, modifierList);
 		bulkInsertString(&macroRoot, macroList);
+
+
+
+		/*!*/
+
+		bulkInsertString(&horizontalAlignmentRoot, horizontalAlignmentList);
+		bulkInsertString(&verticalAlignmentRoot, verticalAlignmentList);
+		bulkInsertString(&numberTypeRoot, numberTypeList);
+		bulkInsertString(&whichMonitorRoot, whichMonitorList);
+		bulkInsertString(&cornerRoot, cornerList);
+
+
+
 		pathInsertString(&asciiRoot, "PATH");
 		jmp readConfig;
 	}
@@ -3012,7 +3118,7 @@ int main(int argumentAmount, const char *const *argument){
 		windowPreferences.heightType = INTEGER_NUMBER_TYPE;
 		windowPreferences.horizontalAlignment = CENTER_HORIZONTAL_ALIGNMENT;
 		windowPreferences.verticalAlignment = CENTER_VERTICAL_ALIGNMENT;
-		windowPreferences.radius = 12;
+		windowPreferences.cornerRadius = 12;
 		windowPreferences.cornerUsed = TOP_LEFT_CORNER_USED | TOP_RIGHT_CORNER_USED | BOTTOM_LEFT_CORNER_USED | BOTTOM_RIGHT_CORNER_USED;
 		windowPreferences.foreground = 0xFFFFFFFF;
 		windowPreferences.background = 0xFF171717;
@@ -3046,7 +3152,7 @@ int main(int argumentAmount, const char *const *argument){
 
 		{
 			Image image;
-			if(windowPreferences.radius and createCircle(windowPreferences.radius, windowPreferences.background, 0x00000000, &image)){
+			if(windowPreferences.cornerRadius and createCircle(windowPreferences.cornerRadius, windowPreferences.background, 0x00000000, &image)){
 				if(windowCirclePixmap){
 					xcb_free_pixmap(connection, windowCirclePixmap);
 				}
@@ -4456,7 +4562,11 @@ GETMULTIPLEASCIISTRINGNODES(){
 	uint8 *returnStringsFoundStart;
 	uint8 *returnStringsFoundCurrent;
 	uint32 returnStringsFoundToken;
-	asciiRoot.stringsFoundAmount = 0;
+	free((*root).stringsFoundStart);
+	popPointer((*root).stringsFoundToken);
+	(*root).stringsFoundAmount = 0;
+	(*root).stringsFoundStart = NULL;
+	(*root).stringsFoundToken = 0;
 	jmp getNode;
 	getNode:{
 		const char *string = prefix;
@@ -4609,17 +4719,50 @@ SETCONFIGVARIABLES(){
 	windowPreferences.heightType = NONE_NUMBER_TYPE;
 	windowPreferences.horizontalAlignment = NONE_HORIZONTAL_ALIGNMENT;
 	windowPreferences.verticalAlignment = NONE_VERTICAL_ALIGNMENT;
-	windowPreferences.radius = 0;
+	windowPreferences.cornerRadius = 0;
 	windowPreferences.cornerUsed = NONE_CORNER_USED;
 	windowPreferences.foreground = 0x00000000;
 	windowPreferences.background = 0x00000000;
 	windowPreferences.selectedForeground = 0x00000000;
 	windowPreferences.selectedBackground = 0x00000000;
+	resultPreferences.x = 0;
+	resultPreferences.y = 0;
+	resultPreferences.xOffset = 0;
+	resultPreferences.yOffset = 0;
+	resultPreferences.width = 0;
+	resultPreferences.height = 0;
+	resultPreferences.xType = 0;
+	resultPreferences.yType = 0;
+	resultPreferences.xOffsetType = NONE_NUMBER_TYPE;
+	resultPreferences.yOffsetType = NONE_NUMBER_TYPE;
+	resultPreferences.widthType = NONE_NUMBER_TYPE;
+	resultPreferences.heightType = NONE_NUMBER_TYPE;
+	resultPreferences.horizontalAlignment = NONE_HORIZONTAL_ALIGNMENT;
+	resultPreferences.verticalAlignment = NONE_VERTICAL_ALIGNMENT;
+	resultPreferences.padding = 0;
+	resultPreferences.margin = 0;
+	resultPreferences.gap = 0;
+	resultPreferences.cornerRadius = 0;
+	resultPreferences.cornerUsed = NONE_CORNER_USED;
+	resultPreferences.foreground = 0x00000000;
+	resultPreferences.background = 0x00000000;
+	resultPreferences.selectedForeground = 0x00000000;
+	resultPreferences.selectedBackground = 0x00000000;
+
+
+
+	/*!*/
+
 	whichMonitor = NONE_WHICH_MONITOR;
 	windowCirclePixmap = XCB_NONE;
 	font = XCB_NONE;
 	maximumStringAmount = 0;
 	resultAllowCircularNavigation = false;
+
+	/*!*/
+
+
+
 	ret;
 }
 READCONFIG(){
@@ -5552,14 +5695,35 @@ READCONFIG(){
 		}
 		if(instructionStart == setInstruction){
 			switch name0Return over
-
-
-
-				/*!*/
-
-
-
-				off: /*-*/ brk;
+				to WINDOW_X_VARIABLE: /*--------------------*/ applySubinstruction(windowX, Set); /*-------------------*/ jmp assessSubinstruction;
+				to WINDOW_Y_VARIABLE: /*--------------------*/ applySubinstruction(windowY, Set); /*-------------------*/ jmp assessSubinstruction;
+				to WINDOW_X_OFFSET_VARIABLE: /*-------------*/ applySubinstruction(windowXOffset, Set); /*-------------*/ jmp assessSubinstruction;
+				to WINDOW_Y_OFFSET_VARIABLE: /*-------------*/ applySubinstruction(windowYOffset, Set); /*-------------*/ jmp assessSubinstruction;
+				to WINDOW_WIDTH_VARIABLE: /*----------------*/ applySubinstruction(windowWidth, Set); /*---------------*/ jmp assessSubinstruction;
+				to WINDOW_HEIGHT_VARIABLE: /*---------------*/ applySubinstruction(windowHeight, Set); /*--------------*/ jmp assessSubinstruction;
+				to WINDOW_HORIZONTAL_ALIGNMENT_VARIABLE: /*-*/ applySubinstruction(windowHorizontalAlignment, Set); /*-*/ jmp assessSubinstruction;
+				to WINDOW_VERTICAL_ALIGNMENT_VARIABLE: /*---*/ applySubinstruction(windowVerticalAlignment, Set); /*---*/ jmp assessSubinstruction;
+				to WINDOW_CORNER_RADIUS_VARIABLE: /*--------*/ applySubinstruction(windowCornerRadius, Set); /*--------*/ jmp assessSubinstruction;
+				to WINDOW_FOREGROUND_VARIABLE: /*-----------*/ applySubinstruction(windowForeground, Set); /*----------*/ jmp assessSubinstruction;
+				to WINDOW_BACKGROUND_VARIABLE: /*-----------*/ applySubinstruction(windowBackground, Set); /*----------*/ jmp assessSubinstruction;
+				to WINDOW_SELECTED_FOREGROUND_VARIABLE: /*--*/ applySubinstruction(windowSelectedForeground, Set); /*--*/ jmp assessSubinstruction;
+				to WINDOW_SELECTED_BACKGROUND_VARIABLE: /*--*/ applySubinstruction(windowSelectedBackground, Set); /*--*/ jmp assessSubinstruction;
+				to RESULT_X_VARIABLE: /*--------------------*/ applySubinstruction(resultX, Set); /*-------------------*/ jmp assessSubinstruction;
+				to RESULT_Y_VARIABLE: /*--------------------*/ applySubinstruction(resultY, Set); /*-------------------*/ jmp assessSubinstruction;
+				to RESULT_X_OFFSET_VARIABLE: /*-------------*/ applySubinstruction(resultXOffset, Set); /*-------------*/ jmp assessSubinstruction;
+				to RESULT_Y_OFFSET_VARIABLE: /*-------------*/ applySubinstruction(resultYOffset, Set); /*-------------*/ jmp assessSubinstruction;
+				to RESULT_WIDTH_VARIABLE: /*----------------*/ applySubinstruction(resultWidth, Set); /*---------------*/ jmp assessSubinstruction;
+				to RESULT_HEIGHT_VARIABLE: /*---------------*/ applySubinstruction(resultHeight, Set); /*--------------*/ jmp assessSubinstruction;
+				to RESULT_HORIZONTAL_ALIGNMENT_VARIABLE: /*-*/ applySubinstruction(resultHorizontalAlignment, Set); /*-*/ jmp assessSubinstruction;
+				to RESULT_VERTICAL_ALIGNMENT_VARIABLE: /*---*/ applySubinstruction(resultVerticalAlignment, Set); /*---*/ jmp assessSubinstruction;
+				to RESULT_PADDING_VARIABLE: /*--------------*/ applySubinstruction(resultPadding, Set); /*-------------*/ jmp assessSubinstruction;
+				to RESULT_MARGIN_VARIABLE: /*---------------*/ applySubinstruction(resultMargin, Set); /*--------------*/ jmp assessSubinstruction;
+				to RESULT_GAP_VARIABLE: /*------------------*/ applySubinstruction(resultGap, Set); /*-----------------*/ jmp assessSubinstruction;
+				to RESULT_FOREGROUND_VARIABLE: /*-----------*/ applySubinstruction(resultForeground, Set); /*----------*/ jmp assessSubinstruction;
+				to RESULT_BACKGROUND_VARIABLE: /*-----------*/ applySubinstruction(resultBackground, Set); /*----------*/ jmp assessSubinstruction;
+				to RESULT_SELECTED_FOREGROUND_VARIABLE: /*--*/ applySubinstruction(resultSelectedForeground, Set); /*--*/ jmp assessSubinstruction;
+				to RESULT_SELECTED_BACKGROUND_VARIABLE: /*--*/ applySubinstruction(resultSelectedBackground, Set); /*--*/ jmp assessSubinstruction;
+				off: /*-------------------------------------*/ /*------------------------------------------------------*/ brk;
 			end
 		}
 		if(instructionStart == grabKeycodeInstruction){
@@ -5642,7 +5806,185 @@ READCONFIG(){
 		}
 		if(instructionStartCopy == setInstruction){
 			switch name0Return over
-				/*!*/
+				to WINDOW_X_VARIABLE:{
+					windowPreferences.x = integer0Return;
+					windowPreferences.xType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_Y_VARIABLE:{
+					windowPreferences.y = integer0Return;
+					windowPreferences.yType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_X_OFFSET_VARIABLE:{
+					windowPreferences.xOffset = integer0Return;
+					windowPreferences.xOffsetType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_Y_OFFSET_VARIABLE:{
+					windowPreferences.yOffset = integer0Return;
+					windowPreferences.yOffsetType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_WIDTH_VARIABLE:{
+					if(integer0Return < 1){
+						printConfigError("integer domain error", "integer is not in [1, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					windowPreferences.width = integer0Return;
+					windowPreferences.widthType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_HEIGHT_VARIABLE:{
+					if(integer0Return < 1){
+						printConfigError("integer domain error", "integer is not in [1, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					windowPreferences.height = integer0Return;
+					windowPreferences.heightType = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_HORIZONTAL_ALIGNMENT_VARIABLE:{
+					windowPreferences.horizontalAlignment = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_VERTICAL_ALIGNMENT_VARIABLE:{
+					windowPreferences.verticalAlignment = name1Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_CORNER_RADIUS_VARIABLE:{
+					Image image;
+					if(integer0Return < 0){
+						printConfigError("integer domain error", "integer is not in [0, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					if(integer0Return and integer0Return != windowPreferences.cornerRadius and createCircle(integer0Return, windowPreferences.background, 0x00000000, &image)){
+						if(windowCirclePixmap){
+							xcb_free_pixmap(connection, windowCirclePixmap);
+						}
+						windowCirclePixmap = xcb_generate_id(connection);
+						xcb_create_pixmap(connection, depth, windowCirclePixmap, window, image.width, image.height);
+						xcb_put_image(connection, XCB_IMAGE_FORMAT_Z_PIXMAP, windowCirclePixmap, gc, image.width, image.height, 0, 0, 0, depth, image.size, image.dataStart);
+						free(image.dataStart);
+						popPointer(image.dataToken);
+						windowPreferences.cornerRadius = integer0Return;
+						windowPreferences.cornerUsed = nameList0Return;
+					}
+					jmp getStatementStart;
+				}
+				to WINDOW_FOREGROUND_VARIABLE:{
+					windowPreferences.foreground = integer0Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_BACKGROUND_VARIABLE:{
+					Image image;
+					windowPreferences.background = integer0Return;
+					if(windowPreferences.cornerRadius and createCircle(windowPreferences.cornerRadius, windowPreferences.background, 0x00000000, &image)){
+						if(windowCirclePixmap){
+							xcb_free_pixmap(connection, windowCirclePixmap);
+						}
+						windowCirclePixmap = xcb_generate_id(connection);
+						xcb_create_pixmap(connection, depth, windowCirclePixmap, window, image.width, image.height);
+						xcb_put_image(connection, XCB_IMAGE_FORMAT_Z_PIXMAP, windowCirclePixmap, gc, image.width, image.height, 0, 0, 0, depth, image.size, image.dataStart);
+						free(image.dataStart);
+						popPointer(image.dataToken);
+					}
+					jmp getStatementStart;
+				}
+				to WINDOW_SELECTED_FOREGROUND_VARIABLE:{
+					windowPreferences.selectedForeground = integer0Return;
+					jmp getStatementStart;
+				}
+				to WINDOW_SELECTED_BACKGROUND_VARIABLE:{
+					windowPreferences.selectedBackground = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_X_VARIABLE:{
+					resultPreferences.x = integer0Return;
+					resultPreferences.xType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_Y_VARIABLE:{
+					resultPreferences.y = integer0Return;
+					resultPreferences.yType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_X_OFFSET_VARIABLE:{
+					resultPreferences.xOffset = integer0Return;
+					resultPreferences.xOffsetType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_Y_OFFSET_VARIABLE:{
+					resultPreferences.yOffset = integer0Return;
+					resultPreferences.yOffsetType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_WIDTH_VARIABLE:{
+					if(integer0Return < 1){
+						printConfigError("integer domain error", "integer is not in [1, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					resultPreferences.width = integer0Return;
+					resultPreferences.widthType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_HEIGHT_VARIABLE:{
+					if(integer0Return < 1){
+						printConfigError("integer domain error", "integer is not in [1, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					resultPreferences.height = integer0Return;
+					resultPreferences.heightType = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_HORIZONTAL_ALIGNMENT_VARIABLE:{
+					resultPreferences.horizontalAlignment = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_VERTICAL_ALIGNMENT_VARIABLE:{
+					resultPreferences.verticalAlignment = name1Return;
+					jmp getStatementStart;
+				}
+				to RESULT_PADDING_VARIABLE:{
+					if(integer0Return < 0){
+						printConfigError("integer domain error", "integer is not in [0, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					resultPreferences.padding = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_MARGIN_VARIABLE:{
+					if(integer0Return < 0){
+						printConfigError("integer domain error", "integer is not in [0, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					resultPreferences.margin = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_GAP_VARIABLE:{
+					if(integer0Return < 0){
+						printConfigError("integer domain error", "integer is not in [0, +infinity)", ';', true, true, true, false, configPath, statementLine, statementStart, statementWall, instructionStart, integer0Instruction, instructionDataStart, currentScopeInstructionList, currentScopeInstructionRoot);
+						jmp getStatementStart;
+					}
+					resultPreferences.gap = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_FOREGROUND_VARIABLE:{
+					resultPreferences.foreground = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_BACKGROUND_VARIABLE:{
+					resultPreferences.background = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_SELECTED_FOREGROUND_VARIABLE:{
+					resultPreferences.selectedForeground = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_SELECTED_BACKGROUND_VARIABLE:{
+					resultPreferences.selectedBackground = integer0Return;
+					jmp getStatementStart;
+				}
 				off:{
 					jmp getStatementStart;
 				}
@@ -6700,6 +7042,12 @@ READIMAGE(){
 	#undef  FILE_HEADER_SIZE
 }
 FREECONFIGVARIABLES(){
+	if(windowCirclePixmap){
+		xcb_free_pixmap(connection, windowCirclePixmap);
+	}
+	if(font){
+		xcb_close_font(connection, font);
+	}
 	ret;
 }
 MATCHCOMMAND(){
@@ -7869,6 +8217,19 @@ EXITCOMMAND(){
 	deleteASCIIStringRoot(&asciiRoot);
 	unsetShortcutRoot(&buttonShortcut);
 	unsetShortcutRoot(&keycodeShortcut);
+
+
+
+	/*!*/
+
+	deleteStringRoot(&cornerRoot);
+	deleteStringRoot(&whichMonitorRoot);
+	deleteStringRoot(&numberTypeRoot);
+	deleteStringRoot(&verticalAlignmentRoot);
+	deleteStringRoot(&horizontalAlignmentRoot);
+
+
+
 	deleteStringRoot(&macroRoot);
 	deleteStringRoot(&modifierRoot);
 	deleteStringRoot(&variableRoot);
