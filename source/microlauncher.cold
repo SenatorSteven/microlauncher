@@ -1693,13 +1693,18 @@ DRAWWINDOW(){
 						uint16 ucs2Start[4096];
 						uint length;
 						if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
-							xcb_query_text_extents_reply_t *reply;
-							uint32 token;
 							if(!selectedCurrent and inputMode == INSERT_INPUT_MODE and inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-								*(ucs2Start + length) = ASCII_TO_UCS2(' ');
+								if(length < lengthof(ucs2Start)){
+									*(ucs2Start + length) = ASCII_TO_UCS2(' ');
+								}
 							}
-							reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
-							token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+						}else{
+							*ucs2Start = ASCII_TO_UCS2(' ');
+							length = 1;
+						}
+						{
+							xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+							uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
 							if(reply){
 								if(getRectangle(NULL, reply, &inputRectangle, &inputContentPreferences, &inputContentRectangle)){
 									x += inputContentRectangle.x;
@@ -1710,74 +1715,45 @@ DRAWWINDOW(){
 							}
 						}
 					}
-					fprintf(stdout, "drawing on %i, %i\n", x, y);
-
-
-
-
-
-
-
-
-
-					uint8 copy = *(current + currentSize);
-					int xCopy;
-					*(current + currentSize) = '\0';
-					drawSegmentedUTF8(current, &x, y, inputContentPreferences.foreground, inputContentPreferences.background);
-					*(current + currentSize) = copy;
-
-
-
-					current += currentSize;
-					currentSize = highlightedSize;
-					xCopy = x;
-
-
-
-					copy = *(current + currentSize);
-					*(current + currentSize) = '\0';
-					drawSegmentedUTF8(current, &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
-					*(current + currentSize) = copy;
-
-
-
-					if(current + currentSize < inputForeheadStart + inputForeheadSize){
-						drawSegmentedUTF8(current + currentSize, &x, y, inputContentPreferences.foreground, inputContentPreferences.background);
-					}
-
-
-
-					if(!selectedCurrent){
-						if(inputMode == NORMAL_INPUT_MODE){
-							if(inputForeheadCurrent <= inputForeheadStart + inputForeheadSize){
-								uint16 ucs2Start[4096];
-								uint length;
-								if((length = UTF8ToUCS2((void *)"a", ucs2Start, countof(ucs2Start)))){
-									xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
-									uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
-									if(reply){
-										const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
-										fillDrawable(pixmap, gc, xCopy, y, 1, fontHeight, inputContentPreferences.foreground);
-										free(reply);
-										popPointer(token);
+					{
+						uint8 copy = *(current + currentSize);
+						int xCopy;
+						*(current + currentSize) = '\0';
+						drawSegmentedUTF8(current, &x, y, inputContentPreferences.foreground, inputContentPreferences.background);
+						*(current + currentSize) = copy;
+						current += currentSize;
+						currentSize = highlightedSize;
+						xCopy = x;
+						copy = *(current + currentSize);
+						*(current + currentSize) = '\0';
+						drawSegmentedUTF8(current, &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
+						*(current + currentSize) = copy;
+						if(current + currentSize < inputForeheadStart + inputForeheadSize){
+							drawSegmentedUTF8(current + currentSize, &x, y, inputContentPreferences.foreground, inputContentPreferences.background);
+						}
+						if(!selectedCurrent){
+							if(inputMode == NORMAL_INPUT_MODE){
+								if(inputForeheadCurrent <= inputForeheadStart + inputForeheadSize){
+									uint16 ucs2Start[4096];
+									uint length;
+									if((length = UTF8ToUCS2((void *)"a", ucs2Start, countof(ucs2Start)))){
+										xcb_query_text_extents_reply_t *const reply = xcb_wait_for_reply(connection, xcb_query_text_extents_unchecked(connection, font, length, (void *)ucs2Start), NULL);
+										uint32 token = pushPointer(reply, "drawWindow() query text extents reply", iFree);
+										if(reply){
+											const uint fontHeight = (*reply).font_ascent + (*reply).font_descent;
+											fillDrawable(pixmap, gc, xCopy, y, 1, fontHeight, inputContentPreferences.foreground);
+											free(reply);
+											popPointer(token);
+										}
 									}
 								}
-							}
-						}elif(inputMode == INSERT_INPUT_MODE){
-							if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-								drawSegmentedUTF8((void *)" ", &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
+							}elif(inputMode == INSERT_INPUT_MODE){
+								if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+									drawSegmentedUTF8((void *)" ", &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
+								}
 							}
 						}
 					}
-
-
-
-
-
-
-
-
-
 					jmp stopDrawingInput;
 				}
 				stopDrawingInput:{}
@@ -1832,7 +1808,7 @@ DRAWWINDOW(){
 									*(valueList + 1) = background;
 									setClippingRectangle(gc, x, y, width, height);
 									xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
-									xcb_image_text_16(connection, length, pixmap, gc, x + resultContentRectangle.x, y + resultContentRectangle.y, (void *)ucs2Start);
+									xcb_image_text_16(connection, length, pixmap, gc, (*reply).overall_left + x + resultContentRectangle.x, (*reply).font_ascent + y + resultContentRectangle.y, (void *)ucs2Start);
 									unsetClippingRectangle(gc);
 								}
 								free(reply);
@@ -1951,10 +1927,6 @@ GETRECTANGLE(){
 	}
 	if((*preferences).verticalAlignment){
 		y = parentY + ((*preferences).verticalAlignment - 1) * (parentHeight - height) / 2;
-	}
-	if(reply){
-		x += (*reply).overall_left;
-		y += (*reply).font_ascent;
 	}
 	(*rectangle).monitor = monitor;
 	(*rectangle).x = x + xOffset;
