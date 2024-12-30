@@ -8,6 +8,10 @@
 */
 
 /*!
+	pasting result "Thunar" doesn't update window properly until something else updates the window.
+*/
+
+/*!
 	future features:
 		insert and match non-ascii.
 		connect the copy buffer to the global text buffer.
@@ -219,7 +223,7 @@ SOFTWARE. */
 	#define UPPERCASE_SELECTION_COMMAND /*------------------*/ (24)
 	#define LOWERCASE_SELECTION_COMMAND /*------------------*/ (25)
 	#define TOGGLE_INSERT_MODE_COMMAND /*-------------------*/ (26)
-	#define PICK_RESULT_COMMAND /*--------------------------*/ (27)
+	#define PASTE_RESULT_COMMAND /*-------------------------*/ (27)
 	#define LAUNCH_COMMAND /*-------------------------------*/ (28)
 	#define RESTART_COMMAND /*------------------------------*/ (29)
 	#define EXIT_COMMAND /*---------------------------------*/ (30)
@@ -678,6 +682,30 @@ SOFTWARE. */
 		uint32 /*--------------*/ width;
 		uint32 /*--------------*/ height;
 	} ElementRectangle;
+
+
+
+	/*!*/
+
+	def struct{
+		uint32 /*--------------*/ dataSize;
+		uint32 /*--------------*/ dataLength;
+		uint8 * /*-------------*/ dataStart;
+		uint8 * /*-------------*/ dataCurrent;
+		uint32 /*--------------*/ dataToken;
+		uint32 /*--------------*/ selectedDataLength;
+		uint8 * /*-------------*/ selectedDataCurrent;
+	} InputBuffer;
+
+	def struct{
+		uint8 * /*-------------*/ dataStart;
+		uint32 /*--------------*/ dataToken;
+		uint32 /*--------------*/ dataLength;
+		uint8 /*---------------*/ pad0[4];
+	} ClipboardBuffer;
+
+
+
 /*!}*/
 
 /*!globals:{*/
@@ -777,6 +805,35 @@ SOFTWARE. */
 
 	/*!*/
 
+	local xcb_window_t /*-----------------*/ window;
+	local xcb_pixmap_t /*-----------------*/ pixmap;
+	local xcb_gcontext_t /*---------------*/ gc;
+	local bool /*-------------------------*/ mapped;
+
+
+
+	local ASCIIStringNodeRoot /*----------*/ asciiRoot;
+
+	InputBuffer /*------------------------*/ inputBuffer;
+	ClipboardBuffer /*--------------------*/ clipboardBuffer;
+
+	local uint8 /*------------------------*/ inputMode;
+
+	local int /*--------------------------*/ currentSelectedResult;
+
+
+
+	local ElementPreferences /*-----------*/ windowPreferences;
+	local ElementPreferences /*-----------*/ inputPreferences;
+	local ElementPreferences /*-----------*/ inputContentPreferences;
+	local ElementPreferences /*-----------*/ resultPreferences;
+	local ElementPreferences /*-----------*/ resultContentPreferences;
+	local xcb_pixmap_t /*-----------------*/ windowCirclePixmap;
+	local uint8 /*------------------------*/ whichMonitor;
+	local xcb_font_t /*-------------------*/ font;
+	local uint /*-------------------------*/ maximumResultAmount;
+	local bool /*-------------------------*/ resultAllowCircularNavigation;
+
 
 
 
@@ -852,7 +909,7 @@ SOFTWARE. */
 		, "uppercase-selection"
 		, "lowercase-selection"
 		, "toggle-insert-mode"
-		, "pick-result"
+		, "paste-result"
 		, "launch"
 		, "restart"
 		, "exit"
@@ -1322,11 +1379,11 @@ SOFTWARE. */
 #define UNSETCLIPPINGRECTANGLE() /*--------------*/ local void             unsetClippingRectangle(const xcb_gcontext_t gc)
 
 #define SETINPUTBUFFER() /*----------------------*/ local void             setInputBuffer(InputBuffer *const inputBuffer)
-#define RESIZEINPUTBUFFER() /*-------------------*/ local bool             resizeInputBuffer(InputBuffer *const inputBuffer, const uint count)
+#define REALLOCATEINPUTBUFFER() /*---------------*/ local bool             reallocateInputBuffer(InputBuffer *const inputBuffer, const uint count)
 #define UNSETINPUTBUFFER() /*--------------------*/ local void             unsetInputBuffer(InputBuffer *const inputBuffer)
 #define SETCLIPBOARDBUFFER() /*------------------*/ local void             setClipboardBuffer(ClipboardBuffer *const clipboardBuffer)
 #define ALLOCATECLIPBOARDBUFFER() /*-------------*/ local bool             allocateClipboardBuffer(ClipboardBuffer *const clipboardBuffer, const uint length)
-#define UBSETCLIPBOARDBUFFER() /*----------------*/ local void             unsetClipboardBuffer(ClipboardBuffer *const clipboardBuffer)
+#define UNSETCLIPBOARDBUFFER() /*----------------*/ local void             unsetClipboardBuffer(ClipboardBuffer *const clipboardBuffer)
 
 #define INSERTCHARACTER() /*---------------------*/ local void             insertCharacter(InputBuffer *const inputBuffer, const xcb_key_press_event_t *const e)
 
@@ -1356,57 +1413,10 @@ SOFTWARE. */
 #define PASTECLIPBOARD() /*----------------------*/ local void             pasteClipboard(InputBuffer *const inputBuffer)
 #define REMOVETEXT() /*--------------------------*/ local void             removeText(InputBuffer *const inputBuffer, const uint8 direction, const uint8 matchLength)
 #define GETRESULTS() /*--------------------------*/ local void             getResults(InputBuffer *const inputBuffer)
-#define PICKRESULT() /*--------------------------*/ local void             pickResult(InputBuffer *const inputBuffer)
+#define PASTERESULT() /*-------------------------*/ local void             pasteResult(InputBuffer *const inputBuffer)
 #define LAUNCH() /*------------------------------*/ local void             launch(InputBuffer *const inputBuffer)
 #define SHIFTLEFTWARDS() /*----------------------*/ local void             shiftLeftwards(InputBuffer *const inputBuffer, const uint distance)
 #define SHIFTRIGHTWARDS() /*---------------------*/ local void             shiftRightwards(InputBuffer *const inputBuffer, const uint distance)
-
-def struct{
-	uint8 * /*-*/ dataStart;
-	uint8 * /*-*/ dataCurrent;
-	uint32 /*--*/ dataToken;
-	uint32 /*--*/ dataLength;
-	uint32 /*--*/ dataSize;
-	uint32 /*--*/ dataAllocated;
-	uint8 * /*-*/ selectedDataCurrent;
-	uint32 /*--*/ selectedDataLength;
-	uint8 /*---*/ pad0[4];
-} InputBuffer;
-
-def struct{
-	uint32 /*--*/ dataLength;
-	uint32 /*--*/ dataSize;
-	uint8 * /*-*/ dataStart;
-	uint32 /*--*/ dataToken;
-} ClipboardBuffer;
-
-/*! needed */
-	local xcb_window_t /*--------*/ window;
-	local xcb_pixmap_t /*--------*/ pixmap;
-	local xcb_gcontext_t /*------*/ gc;
-	local bool /*----------------*/ mapped;
-
-/*! input */
-	local ASCIIStringNodeRoot /*-*/ asciiRoot;
-
-	InputBuffer /*---------------*/ inputBuffer;
-	ClipboardBuffer /*-----------*/ clipboardBuffer;
-
-	local uint8 /*---------------*/ inputMode;
-	local uint /*----------------*/ maximumResultAmount;
-	local bool /*----------------*/ resultAllowCircularNavigation;
-
-	local int /*-----------------*/ currentSelectedResult;
-
-/*! config */
-	local ElementPreferences /*--*/ windowPreferences;
-	local ElementPreferences /*--*/ inputPreferences;
-	local ElementPreferences /*--*/ inputContentPreferences;
-	local ElementPreferences /*--*/ resultPreferences;
-	local ElementPreferences /*--*/ resultContentPreferences;
-	local xcb_pixmap_t /*--------*/ windowCirclePixmap;
-	local uint8 /*---------------*/ whichMonitor;
-	local xcb_font_t /*----------*/ font;
 
 CONFIGUREWINDOW();
 UPDATEWINDOW();
@@ -1422,11 +1432,11 @@ SETCLIPPINGRECTANGLE();
 UNSETCLIPPINGRECTANGLE();
 
 SETINPUTBUFFER();
-RESIZEINPUTBUFFER();
+REALLOCATEINPUTBUFFER();
 UNSETINPUTBUFFER();
 SETCLIPBOARDBUFFER();
 ALLOCATECLIPBOARDBUFFER();
-UBSETCLIPBOARDBUFFER();
+UNSETCLIPBOARDBUFFER();
 
 GETCHARACTERLENGTH();
 GETWORDLENGTH();
@@ -1448,7 +1458,7 @@ REMOVESELECTED();
 PASTECLIPBOARD();
 REMOVETEXT();
 GETRESULTS();
-PICKRESULT();
+PASTERESULT();
 LAUNCH();
 
 
@@ -1993,11 +2003,28 @@ GETTYPEDNUMBER(){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 SETINPUTBUFFER(){
-	#define INPUT_BUFFER_BLOCK_SIZE /*-*/ (512)
-	(*inputBuffer).dataLength = 0;
+	#define INPUT_BUFFER_BLOCK_SIZE /*-*/ (256)
 	(*inputBuffer).dataSize = INPUT_BUFFER_BLOCK_SIZE;
-	(*inputBuffer).dataAllocated = 0;
+	(*inputBuffer).dataLength = 0;
 	(*inputBuffer).dataStart = malloc((*inputBuffer).dataSize * sizeof(uint8));
 	(*inputBuffer).dataCurrent = (*inputBuffer).dataStart;
 	(*inputBuffer).dataToken = pushPointer((*inputBuffer).dataStart, "input buffer pointer", iFree);
@@ -2009,11 +2036,15 @@ SETINPUTBUFFER(){
 	*(*inputBuffer).dataStart = '\0';
 	ret;
 }
-RESIZEINPUTBUFFER(){
-	if((*inputBuffer).dataAllocated + count >= (*inputBuffer).dataSize){
+REALLOCATEINPUTBUFFER(){
+	if((*inputBuffer).dataLength + count >= (*inputBuffer).dataSize){
 		const uint offset = (*inputBuffer).dataCurrent - (*inputBuffer).dataStart;
 		void *temp;
-		(*inputBuffer).dataSize += INPUT_BUFFER_BLOCK_SIZE;
+		if((*inputBuffer).dataLength + count >= (*inputBuffer).dataSize + INPUT_BUFFER_BLOCK_SIZE){
+			(*inputBuffer).dataSize = (*inputBuffer).dataLength + count;
+		}else{
+			(*inputBuffer).dataSize += INPUT_BUFFER_BLOCK_SIZE;
+		}
 		temp = realloc((*inputBuffer).dataStart, (*inputBuffer).dataSize * sizeof(uint8));
 		updatePointer((*inputBuffer).dataToken, temp);
 		if(!temp){
@@ -2032,18 +2063,23 @@ UNSETINPUTBUFFER(){
 	ret;
 	#undef  INPUT_BUFFER_BLOCK_SIZE
 }
+
+
+
+
+
+
+
+
+
 SETCLIPBOARDBUFFER(){
 	(*clipboardBuffer).dataLength = 0;
-	(*clipboardBuffer).dataSize = 0;
 	(*clipboardBuffer).dataStart = NULL;
 	(*clipboardBuffer).dataToken = 0;
 	ret;
 }
 ALLOCATECLIPBOARDBUFFER(){
-	if((*clipboardBuffer).dataStart){
-		free((*clipboardBuffer).dataStart);
-		popPointer((*clipboardBuffer).dataToken);
-	}
+	unsetClipboardBuffer(clipboardBuffer);
 	(*clipboardBuffer).dataLength = length;
 	(*clipboardBuffer).dataStart = malloc((*clipboardBuffer).dataLength * sizeof(uint8));
 	(*clipboardBuffer).dataToken = pushPointer((*clipboardBuffer).dataStart, "clipboard buffer pointer", iFree);
@@ -2053,7 +2089,7 @@ ALLOCATECLIPBOARDBUFFER(){
 	}
 	ret true;
 }
-UBSETCLIPBOARDBUFFER(){
+UNSETCLIPBOARDBUFFER(){
 	free((*clipboardBuffer).dataStart);
 	popPointer((*clipboardBuffer).dataToken);
 	ret;
@@ -2148,7 +2184,7 @@ INSERTCHARACTER(){
 		if(!(count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL))){
 			ret;
 		}
-		if(!resizeInputBuffer(inputBuffer, count)){
+		if(!reallocateInputBuffer(inputBuffer, count + 1)){
 			ret;
 		}
 		switch inputMode over
@@ -2190,10 +2226,10 @@ INSERTCHARACTER(){
 	}
 	addCharacter:{
 		switch count over
-			fallthrough4: to 4: *((*inputBuffer).dataCurrent + 3) = *(buffer + 3); jmp fallthrough3;
-			fallthrough3: to 3: *((*inputBuffer).dataCurrent + 2) = *(buffer + 2); jmp fallthrough2;
-			fallthrough2: to 2: *((*inputBuffer).dataCurrent + 1) = *(buffer + 1); jmp fallthrough1;
-			fallthrough1: to 1: *((*inputBuffer).dataCurrent + 0) = *(buffer + 0); brk; jmp fallthrough4;
+			fallthrough4: to 4: *((*inputBuffer).dataCurrent + 3) = *(buffer + 3); /*------*/ jmp fallthrough3;
+			fallthrough3: to 3: *((*inputBuffer).dataCurrent + 2) = *(buffer + 2); /*------*/ jmp fallthrough2;
+			fallthrough2: to 2: *((*inputBuffer).dataCurrent + 1) = *(buffer + 1); /*------*/ jmp fallthrough1;
+			fallthrough1: to 1: *((*inputBuffer).dataCurrent + 0) = *(buffer + 0); brk; /*-*/ jmp fallthrough4;
 		end
 		(*inputBuffer).dataCurrent += count;
 		(*inputBuffer).dataLength += count;
@@ -2563,13 +2599,6 @@ REMOVESELECTED(){
 	ret;
 }
 PASTECLIPBOARD(){
-
-
-
-	/*! update input buffer */
-
-
-
 	uint8 *current;
 	uint8 *wall;
 	if(!clipboardBuffer.dataLength){
@@ -2577,6 +2606,9 @@ PASTECLIPBOARD(){
 	}
 	if((*inputBuffer).selectedDataCurrent){
 		removeSelected(inputBuffer);
+	}
+	if(!reallocateInputBuffer(inputBuffer, clipboardBuffer.dataLength + 1)){
+		ret;
 	}
 	shiftRightwards(inputBuffer, clipboardBuffer.dataLength);
 	current = clipboardBuffer.dataStart;
@@ -2624,31 +2656,33 @@ REMOVETEXT(){
 	ret;
 }
 GETRESULTS(){
-	/*! {
-		const uint amountPost = (*inputBuffer).dataLength - ((*inputBuffer).dataCurrent - (*inputBuffer).dataStart);
-		const uint amountPre = (*inputBuffer).dataLength - amountPost;
-		const char *const dotsPre = (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 3? "..." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 2? ".." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 1? "." : "";
-		const uint (*inputBuffer).selectedDataLength = (*inputBuffer).selectedDataCurrent? (*inputBuffer).selectedDataLength : lengthof("<NONE>");
-		const char *const selected = (*inputBuffer).selectedDataCurrent? (char *)(*inputBuffer).selectedDataCurrent : "<NONE>";
-		const char *const dotsPost = (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 2? "..." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 1? ".." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 0? "." : "";
-		const char *const buffer = clipboardBuffer.dataLength? (char *)clipboardBuffer.dataStart : "";
-		const uint bufferLength = clipboardBuffer.dataLength? clipboardBuffer.dataLength : lengthof("");
-		const char *const isASCII = isASCIIString((*inputBuffer).dataStart)? "" : " (non-ascii)";
-		const char *const mode = inputMode == NORMAL_INPUT_MODE? "" : " (insert)";
-		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, (*inputBuffer).dataStart, amountPost, (*inputBuffer).dataCurrent, dotsPre, (*inputBuffer).selectedDataLength, selected, dotsPost, bufferLength, buffer, isASCII, mode);
-	} */
 	getMultipleASCIIStringNodes(&asciiRoot, maximumResultAmount, (void *)(*inputBuffer).dataStart);
 	ret;
 }
-PICKRESULT(){
-	(void)inputBuffer;
-
-
-
-	/*!*/
-
-
-
+PASTERESULT(){
+	if(currentSelectedResult != -1){
+		uint8 *current = asciiRoot.stringsFoundStart;
+		int i = 0;
+		jmp getResultLoop;
+		getResultLoop:{
+			if(i < currentSelectedResult){
+				current += *current + 2;
+				inc i;
+				jmp getResultLoop;
+			}
+			jmp copyResult;
+		}
+		copyResult:{
+			const uint length = *current;
+			uint8 *const dataCurrent = (*inputBuffer).dataStart;
+			(*inputBuffer).dataLength = length;
+			(*inputBuffer).dataCurrent = dataCurrent + length;
+			(*inputBuffer).selectedDataCurrent = NULL;
+			copyMemory(current + 1, dataCurrent, length);
+			*(dataCurrent + length) = '\0';
+			currentSelectedResult = -1;
+		}
+	}
 	ret;
 }
 LAUNCH(){
@@ -3599,11 +3633,12 @@ int main(int argumentAmount, const char *const *argument){
 
 
 
+		/*!*/
+
+
+
 		setInputBuffer(&inputBuffer);
 		setClipboardBuffer(&clipboardBuffer);
-
-		/*! unsetInputBuffer(&inputBuffer); */
-		/*! unsetClipboardBuffer(&clipboardBuffer); */
 
 
 
@@ -3775,10 +3810,6 @@ int main(int argumentAmount, const char *const *argument){
 	end
 	propertyNotifyEvent:{
 		#define e /*-*/ ((xcb_property_notify_event_t *)event)
-
-
-
-		/*!*/
 
 
 
@@ -4936,7 +4967,8 @@ GETMULTIPLEASCIISTRINGNODES(){
 	getNode:{
 		const char *string = prefix;
 		switch getASCIIStringNode(root, true, &string, &node) over
-			to COMPLETE_ASCII_STRING_NODE: /*---*/ jmp prefixFound;
+			to COMPLETE_ASCII_STRING_NODE: /*---*/ 
+		fprintf(stdout, "found complete\n"); jmp prefixFound;
 			to INCOMPLETE_ASCII_STRING_NODE: /*-*/ jmp prefixFound;
 			off: /*-----------------------------*/ ret false;
 		end
@@ -7629,7 +7661,7 @@ MATCHCOMMAND(){
 		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp uppercaseSelectionCommand;
 		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp lowercaseSelectionCommand;
 		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp toggleInsertModeCommand;
-		to PICK_RESULT_COMMAND: /*-------------*/ jmp pickResultCommand;
+		to PASTE_RESULT_COMMAND: /*------------*/ jmp pasteResultCommand;
 		to LAUNCH_COMMAND: /*------------------*/ jmp launchCommand;
 		to RESTART_COMMAND: /*-----------------*/ jmp restartCommand;
 		to EXIT_COMMAND: /*--------------------*/ jmp exitCommand;
@@ -7663,7 +7695,7 @@ MATCHCOMMAND(){
 		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp noneCommand;
 		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp noneCommand;
 		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp noneCommand;
-		to PICK_RESULT_COMMAND: /*-------------*/ jmp noneCommand;
+		to PASTE_RESULT_COMMAND: /*------------*/ jmp noneCommand;
 		to LAUNCH_COMMAND: /*------------------*/ jmp noneCommand;
 		to RESTART_COMMAND: /*-----------------*/ jmp noneCommand;
 		to EXIT_COMMAND: /*--------------------*/ jmp noneCommand;
@@ -7697,7 +7729,7 @@ MATCHCOMMAND(){
 		to UPPERCASE_SELECTION_COMMAND: /*-----*/ jmp uppercaseSelectionCommand;
 		to LOWERCASE_SELECTION_COMMAND: /*-----*/ jmp lowercaseSelectionCommand;
 		to TOGGLE_INSERT_MODE_COMMAND: /*------*/ jmp toggleInsertModeCommand;
-		to PICK_RESULT_COMMAND: /*-------------*/ jmp pickResultCommand;
+		to PASTE_RESULT_COMMAND: /*------------*/ jmp pasteResultCommand;
 		to LAUNCH_COMMAND: /*------------------*/ jmp launchCommand;
 		to RESTART_COMMAND: /*-----------------*/ jmp restartCommand;
 		to EXIT_COMMAND: /*--------------------*/ jmp exitCommand;
@@ -7873,8 +7905,8 @@ MATCHCOMMAND(){
 		updateWindow();
 		jmp emergencyExit;
 	}
-	pickResultCommand:{
-		pickResult(&inputBuffer);
+	pasteResultCommand:{
+		pasteResult(&inputBuffer);
 		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
@@ -8705,6 +8737,8 @@ EXITCOMMAND(){
 	free(event);
 	popPointer(eventToken);
 	shmDisconnect();
+	unsetClipboardBuffer(&clipboardBuffer);
+	unsetInputBuffer(&inputBuffer);
 	cancelThreads();
 	freeConfigVariables();
 	ungrabShortcuts();
