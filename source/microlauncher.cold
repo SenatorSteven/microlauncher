@@ -1,5 +1,9 @@
 
 /*!
+	unhandled generic event (85).
+*/
+
+/*!
 	"as" is giving only "as" and not "as" and "assistant" and a whole lot more.
 */
 
@@ -277,6 +281,8 @@ SOFTWARE. */
 	#define RESULT_CONTENT_SELECTED_BACKGROUND_VARIABLE /*--*/ (54)
 	#define WHICH_MONITOR_VARIABLE /*-----------------------*/ (55)
 	#define FONT_VARIABLE /*--------------------------------*/ (56)
+	#define MAXIMUM_RESULT_AMOUNT_VARIABLE /*---------------*/ (57)
+	#define RESULT_ALLOW_CIRCULAR_NAVIGATION_VARIABLE /*----*/ (58)
 
 	#define EMPTY_SHARED_STATUS /*--------------------------*/ (0)
 	#define FULL_SHARED_STATUS /*---------------------------*/ (1)
@@ -370,7 +376,7 @@ SOFTWARE. */
 	#define READIMAGE() /*----------------------------------*/ local uint8              readImage(const char *const path, const char **errorMessage, Image *image)
 	#define FREECONFIGVARIABLES() /*------------------------*/ local void               freeConfigVariables(void)
 	#define MATCHCOMMAND() /*-------------------------------*/ local uint8              matchCommand(const Command command, const uint8 origin)
-	#define EXEC() /*---------------------------------------*/ local void               exec(const char *const string)
+	#define EXEC() /*---------------------------------------*/ local void               exec(const void *const string)
 	#define SETMEMORY() /*----------------------------------*/ local void               setMemory(void *const destinationStart, const uint64 value, const uint itemAmount, const uint8 perByteAmount)
 	#define COPYMEMORY() /*---------------------------------*/ local void               copyMemory(void *const sourceStart, void *const destinationStart, const uint byteAmount)
 	#define FINDSTRINGLENGTH() /*---------------------------*/ local uint               findStringLength(const void *string)
@@ -910,6 +916,8 @@ SOFTWARE. */
 		, "result-content-selected-background"
 		, "which-monitor"
 		, "font"
+		, "maximum-result-amount"
+		, "result-allow-circular-navigation"
 		, NULL
 	};
 	local const char *const /*------------*/ modifierList[] = {
@@ -1050,6 +1058,8 @@ SOFTWARE. */
 	local const Instruction /*------------*/ resultContentSelectedBackgroundSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ whichMonitorSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ fontSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, STRING_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ maximumResultAmountSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
+	local const Instruction /*------------*/ resultAllowCircularNavigationSetSubinstruction[] = {NAME_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ executeGrabKeycodeSubinstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, EXECUTE_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 	local const Instruction /*------------*/ executeGrabButtonSubinstruction[] = {NAME_LIST_INSTRUCTION_TYPE, NUMBER_INSTRUCTION_TYPE, NAME_INSTRUCTION_TYPE, EXECUTE_INSTRUCTION_TYPE, END_INSTRUCTION_TYPE};
 
@@ -1123,6 +1133,8 @@ SOFTWARE. */
 	local StringNodeRoot *const /*--------*/ resultContentSelectedBackgroundSetSubinstructionData[] = {&variableRoot};
 	local StringNodeRoot *const /*--------*/ whichMonitorSetSubinstructionData[] = {&variableRoot, &whichMonitorRoot};
 	local StringNodeRoot *const /*--------*/ fontSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ maximumResultAmountSetSubinstructionData[] = {&variableRoot};
+	local StringNodeRoot *const /*--------*/ resultAllowCircularNavigationSetSubinstructionData[] = {&variableRoot, &booleanRoot};
 	local StringNodeRoot *const /*--------*/ executeGrabKeycodeSubinstructionData[] = {&modifierRoot, &commandRoot};
 	local StringNodeRoot *const /*--------*/ executeGrabButtonSubinstructionData[] = {&modifierRoot, &commandRoot};
 
@@ -1284,9 +1296,9 @@ SOFTWARE. */
 #define NORMAL_INPUT_MODE /*---------------------*/ (1)
 #define INSERT_INPUT_MODE /*---------------------*/ (2)
 
-#define NONE_MATCH_SIZE /*-----------------------*/ (0)
-#define CHARACTER_MATCH_SIZE /*------------------*/ (1)
-#define WORD_MATCH_SIZE /*-----------------------*/ (2)
+#define NONE_MATCH_LENGTH /*---------------------*/ (0)
+#define CHARACTER_MATCH_LENGTH /*----------------*/ (1)
+#define WORD_MATCH_LENGTH /*---------------------*/ (2)
 
 #define NONE_DIRECTION /*------------------------*/ (0)
 #define LEFT_DIRECTION /*------------------------*/ (1)
@@ -1295,7 +1307,6 @@ SOFTWARE. */
 #define NONE_CASE /*-----------------------------*/ (0)
 #define UPPER_CASE /*----------------------------*/ (1)
 #define LOWER_CASE /*----------------------------*/ (2)
-
 
 #define CONFIGUREWINDOW() /*---------------------*/ local void             configureWindow(void)
 #define UPDATEWINDOW() /*------------------------*/ local void             updateWindow(void)
@@ -1310,29 +1321,64 @@ SOFTWARE. */
 #define SETCLIPPINGRECTANGLE() /*----------------*/ local void             setClippingRectangle(const xcb_gcontext_t gc, const int x, const int y, const uint width, const uint height)
 #define UNSETCLIPPINGRECTANGLE() /*--------------*/ local void             unsetClippingRectangle(const xcb_gcontext_t gc)
 
-#define GETCHARACTERSIZE() /*--------------------*/ local uint             getCharacterSize(const uint8 direction, const uint8 *const p)
-#define GETWORDSIZE() /*-------------------------*/ local uint             getWordSize(const uint8 direction, const uint8 *const p)
-#define SHIFTLEFTWARDS() /*----------------------*/ local void             shiftLeftwards(const uint distance)
-#define SHIFTRIGHTWARDS() /*---------------------*/ local void             shiftRightwards(const uint distance)
-#define CHANGEMODE() /*--------------------------*/ local void             changeMode(void)
-#define INSERTCHARACTER() /*---------------------*/ local void             insertCharacter(const uint count, const uint8 *const buffer)
+#define SETINPUTBUFFER() /*----------------------*/ local void             setInputBuffer(InputBuffer *const inputBuffer)
+#define RESIZEINPUTBUFFER() /*-------------------*/ local bool             resizeInputBuffer(InputBuffer *const inputBuffer, const uint count)
+#define UNSETINPUTBUFFER() /*--------------------*/ local void             unsetInputBuffer(InputBuffer *const inputBuffer)
+#define SETCLIPBOARDBUFFER() /*------------------*/ local void             setClipboardBuffer(ClipboardBuffer *const clipboardBuffer)
+#define ALLOCATECLIPBOARDBUFFER() /*-------------*/ local bool             allocateClipboardBuffer(ClipboardBuffer *const clipboardBuffer, const uint length)
+#define UBSETCLIPBOARDBUFFER() /*----------------*/ local void             unsetClipboardBuffer(ClipboardBuffer *const clipboardBuffer)
 
-#define GOTOLEFT() /*----------------------------*/ local void             gotoLeft(const uint8 matchSize)
-#define GOTORIGHT() /*---------------------------*/ local void             gotoRight(const uint8 matchSize)
-#define GOTOSTART() /*---------------------------*/ local void             gotoStart(void)
-#define GOTOEND() /*-----------------------------*/ local void             gotoEnd(void)
-#define SELECTLEFT() /*--------------------------*/ local void             selectLeft(const uint8 matchSize)
-#define SELECTRIGHT() /*-------------------------*/ local void             selectRight(const uint8 matchSize)
-#define SELECTSTART() /*-------------------------*/ local void             selectStart(void)
-#define SELECTEND() /*---------------------------*/ local void             selectEnd(void)
-#define SELECTALL() /*---------------------------*/ local void             selectAll(void)
-#define TOCASE() /*------------------------------*/ local void             toCase(const uint8 newCase)
-#define COPYSELECTED() /*------------------------*/ local void             copySelected(void)
-#define REMOVESELECTED() /*----------------------*/ local void             removeSelected(void)
-#define PASTECLIPBOARD() /*----------------------*/ local void             pasteClipboard(void)
-#define REMOVETEXT() /*--------------------------*/ local void             removeText(const uint8 direction, const uint8 matchSize)
-#define GETRESULTS() /*--------------------------*/ local void             getResults(void)
-#define PICKRESULT() /*--------------------------*/ local void             pickResult(void)
+#define INSERTCHARACTER() /*---------------------*/ local void             insertCharacter(InputBuffer *const inputBuffer, const xcb_key_press_event_t *const e)
+
+
+
+
+
+
+
+
+
+#define GETCHARACTERLENGTH() /*------------------*/ local uint             getCharacterLength(const uint8 direction, const uint8 *const p)
+#define GETWORDLENGTH() /*-----------------------*/ local uint             getWordLength(InputBuffer *const inputBuffer, const uint8 direction, const uint8 *const p)
+#define CHANGEMODE() /*--------------------------*/ local void             changeMode(void)
+
+#define GOTOLEFT() /*----------------------------*/ local void             gotoLeft(InputBuffer *const inputBuffer, const uint8 matchLength)
+#define GOTORIGHT() /*---------------------------*/ local void             gotoRight(InputBuffer *const inputBuffer, const uint8 matchLength)
+#define GOTOSTART() /*---------------------------*/ local void             gotoStart(InputBuffer *const inputBuffer)
+#define GOTOEND() /*-----------------------------*/ local void             gotoEnd(InputBuffer *const inputBuffer)
+#define SELECTTEXT() /*--------------------------*/ local void             selectText(InputBuffer *const inputBuffer, const uint8 direction, const uint8 matchLength)
+#define SELECTSTART() /*-------------------------*/ local void             selectStart(InputBuffer *const inputBuffer)
+#define SELECTEND() /*---------------------------*/ local void             selectEnd(InputBuffer *const inputBuffer)
+#define SELECTALL() /*---------------------------*/ local void             selectAll(InputBuffer *const inputBuffer)
+#define TOCASE() /*------------------------------*/ local void             toCase(InputBuffer *const inputBuffer, const uint8 newCase)
+#define COPYSELECTED() /*------------------------*/ local void             copySelected(InputBuffer *const inputBuffer)
+#define REMOVESELECTED() /*----------------------*/ local void             removeSelected(InputBuffer *const inputBuffer)
+#define PASTECLIPBOARD() /*----------------------*/ local void             pasteClipboard(InputBuffer *const inputBuffer)
+#define REMOVETEXT() /*--------------------------*/ local void             removeText(InputBuffer *const inputBuffer, const uint8 direction, const uint8 matchLength)
+#define GETRESULTS() /*--------------------------*/ local void             getResults(InputBuffer *const inputBuffer)
+#define PICKRESULT() /*--------------------------*/ local void             pickResult(InputBuffer *const inputBuffer)
+#define LAUNCH() /*------------------------------*/ local void             launch(InputBuffer *const inputBuffer)
+#define SHIFTLEFTWARDS() /*----------------------*/ local void             shiftLeftwards(InputBuffer *const inputBuffer, const uint distance)
+#define SHIFTRIGHTWARDS() /*---------------------*/ local void             shiftRightwards(InputBuffer *const inputBuffer, const uint distance)
+
+def struct{
+	uint8 * /*-*/ dataStart;
+	uint8 * /*-*/ dataCurrent;
+	uint32 /*--*/ dataToken;
+	uint32 /*--*/ dataLength;
+	uint32 /*--*/ dataSize;
+	uint32 /*--*/ dataAllocated;
+	uint8 * /*-*/ selectedDataCurrent;
+	uint32 /*--*/ selectedDataLength;
+	uint8 /*---*/ pad0[4];
+} InputBuffer;
+
+def struct{
+	uint32 /*--*/ dataLength;
+	uint32 /*--*/ dataSize;
+	uint8 * /*-*/ dataStart;
+	uint32 /*--*/ dataToken;
+} ClipboardBuffer;
 
 /*! needed */
 	local xcb_window_t /*--------*/ window;
@@ -1343,23 +1389,12 @@ SOFTWARE. */
 /*! input */
 	local ASCIIStringNodeRoot /*-*/ asciiRoot;
 
-#define INPUT_BLOCK_SIZE /*--------*/ (512)
-#define INPUT_BUFFER_BLOCK_SIZE /*-*/ (512)
-
-	local uint8 /*---------------*/ inputForeheadStart[4096]; /*!*/
-	local uint8 * /*-------------*/ inputForeheadCurrent; /*!*/
-	local uint /*----------------*/ inputForeheadSize; /*!*/
-
-	local uint8 * /*-------------*/ selectedCurrent;
-	local uint /*----------------*/ selectedSize;
-
-	local uint8 /*---------------*/ inputClipboardStart[4096]; /*!*/
-	local uint /*----------------*/ inputClipboardSize; /*!*/
+	InputBuffer /*---------------*/ inputBuffer;
+	ClipboardBuffer /*-----------*/ clipboardBuffer;
 
 	local uint8 /*---------------*/ inputMode;
+	local uint /*----------------*/ maximumResultAmount;
 	local bool /*----------------*/ resultAllowCircularNavigation;
-
-	local uint /*----------------*/ maximumStringAmount;
 
 	local int /*-----------------*/ currentSelectedResult;
 
@@ -1386,8 +1421,15 @@ DRAWSEGMENTEDUTF8();
 SETCLIPPINGRECTANGLE();
 UNSETCLIPPINGRECTANGLE();
 
-GETCHARACTERSIZE();
-GETWORDSIZE();
+SETINPUTBUFFER();
+RESIZEINPUTBUFFER();
+UNSETINPUTBUFFER();
+SETCLIPBOARDBUFFER();
+ALLOCATECLIPBOARDBUFFER();
+UBSETCLIPBOARDBUFFER();
+
+GETCHARACTERLENGTH();
+GETWORDLENGTH();
 SHIFTLEFTWARDS();
 SHIFTRIGHTWARDS();
 CHANGEMODE();
@@ -1396,8 +1438,7 @@ GOTOLEFT();
 GOTORIGHT();
 GOTOSTART();
 GOTOEND();
-SELECTLEFT();
-SELECTRIGHT();
+SELECTTEXT();
 SELECTSTART();
 SELECTEND();
 SELECTALL();
@@ -1408,6 +1449,7 @@ PASTECLIPBOARD();
 REMOVETEXT();
 GETRESULTS();
 PICKRESULT();
+LAUNCH();
 
 
 
@@ -1670,30 +1712,31 @@ DRAWWINDOW(){
 			fillDrawable(pixmap, gc, x, y, width, height, inputPreferences.background);
 			if(font){
 				uint highlightedSize;
-				uint8 *current = inputForeheadStart;
+				uint8 *current = inputBuffer.dataStart;
 				uint8 currentSize;
-				if(selectedCurrent){
-					highlightedSize = selectedSize;
-					currentSize = selectedCurrent - inputForeheadStart;
+				if(inputBuffer.selectedDataCurrent){
+					highlightedSize = inputBuffer.selectedDataLength;
+					currentSize = inputBuffer.selectedDataCurrent - inputBuffer.dataStart;
 					jmp drawInput;
 				}
 				if(inputMode == NORMAL_INPUT_MODE){
 					highlightedSize = 0;
-					currentSize = inputForeheadCurrent - inputForeheadStart;
+					currentSize = inputBuffer.dataCurrent - inputBuffer.dataStart;
 					jmp drawInput;
 				}
 				if(inputMode == INSERT_INPUT_MODE){
 					highlightedSize = 1;
-					currentSize = inputForeheadCurrent - inputForeheadStart;
+					currentSize = inputBuffer.dataCurrent - inputBuffer.dataStart;
 					jmp drawInput;
 				}
 				jmp stopDrawingInput;
 				drawInput:{
+					setClippingRectangle(gc, x, y, width, height);
 					{
 						uint16 ucs2Start[4096];
 						uint length;
 						if((length = UTF8ToUCS2(current, ucs2Start, countof(ucs2Start)))){
-							if(!selectedCurrent and inputMode == INSERT_INPUT_MODE and inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+							if(!inputBuffer.selectedDataCurrent and inputMode == INSERT_INPUT_MODE and inputBuffer.dataCurrent == inputBuffer.dataStart + inputBuffer.dataLength){
 								if(length < lengthof(ucs2Start)){
 									*(ucs2Start + length) = ASCII_TO_UCS2(' ');
 								}
@@ -1728,12 +1771,12 @@ DRAWWINDOW(){
 						*(current + currentSize) = '\0';
 						drawSegmentedUTF8(current, &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
 						*(current + currentSize) = copy;
-						if(current + currentSize < inputForeheadStart + inputForeheadSize){
+						if(current + currentSize < inputBuffer.dataStart + inputBuffer.dataLength){
 							drawSegmentedUTF8(current + currentSize, &x, y, inputContentPreferences.foreground, inputContentPreferences.background);
 						}
-						if(!selectedCurrent){
+						if(!inputBuffer.selectedDataCurrent){
 							if(inputMode == NORMAL_INPUT_MODE){
-								if(inputForeheadCurrent <= inputForeheadStart + inputForeheadSize){
+								if(inputBuffer.dataCurrent <= inputBuffer.dataStart + inputBuffer.dataLength){
 									uint16 ucs2Start[4096];
 									uint length;
 									if((length = UTF8ToUCS2((void *)"a", ucs2Start, countof(ucs2Start)))){
@@ -1748,12 +1791,13 @@ DRAWWINDOW(){
 									}
 								}
 							}elif(inputMode == INSERT_INPUT_MODE){
-								if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
+								if(inputBuffer.dataCurrent == inputBuffer.dataStart + inputBuffer.dataLength){
 									drawSegmentedUTF8((void *)" ", &x, y, inputContentPreferences.selectedForeground, inputContentPreferences.selectedBackground);
 								}
 							}
 						}
 					}
+					unsetClippingRectangle(gc);
 					jmp stopDrawingInput;
 				}
 				stopDrawingInput:{}
@@ -1847,16 +1891,8 @@ DRAWSEGMENTEDUTF8(){
 			(void)fontHeight;
 			*(valueList + 0) = foreground;
 			*(valueList + 1) = background;
-
-
-
-			/*! apply clipping */
-
-
-
 			xcb_change_gc(connection, gc, XCB_GC_FOREGROUND | XCB_GC_BACKGROUND, valueList);
 			xcb_image_text_16(connection, length, pixmap, gc, fontX, fontY, (void *)ucs2Start);
-			unsetClippingRectangle(gc);
 			free(reply);
 			popPointer(token);
 			*x += fontWidth;
@@ -1957,6 +1993,71 @@ GETTYPEDNUMBER(){
 
 
 
+SETINPUTBUFFER(){
+	#define INPUT_BUFFER_BLOCK_SIZE /*-*/ (512)
+	(*inputBuffer).dataLength = 0;
+	(*inputBuffer).dataSize = INPUT_BUFFER_BLOCK_SIZE;
+	(*inputBuffer).dataAllocated = 0;
+	(*inputBuffer).dataStart = malloc((*inputBuffer).dataSize * sizeof(uint8));
+	(*inputBuffer).dataCurrent = (*inputBuffer).dataStart;
+	(*inputBuffer).dataToken = pushPointer((*inputBuffer).dataStart, "input buffer pointer", iFree);
+	(*inputBuffer).selectedDataCurrent = NULL;
+	if(!(*inputBuffer).dataStart){
+		printTitledError("memory allocation error", "could not allocate memory for input buffer");
+		ret;
+	}
+	*(*inputBuffer).dataStart = '\0';
+	ret;
+}
+RESIZEINPUTBUFFER(){
+	if((*inputBuffer).dataAllocated + count >= (*inputBuffer).dataSize){
+		const uint offset = (*inputBuffer).dataCurrent - (*inputBuffer).dataStart;
+		void *temp;
+		(*inputBuffer).dataSize += INPUT_BUFFER_BLOCK_SIZE;
+		temp = realloc((*inputBuffer).dataStart, (*inputBuffer).dataSize * sizeof(uint8));
+		updatePointer((*inputBuffer).dataToken, temp);
+		if(!temp){
+			printTitledError("memory allocation error", "could not reallocate memory for input buffer");
+			(*inputBuffer).dataSize -= INPUT_BUFFER_BLOCK_SIZE;
+			ret false;
+		}
+		(*inputBuffer).dataStart = temp;
+		(*inputBuffer).dataCurrent = (*inputBuffer).dataStart + offset;
+	}
+	ret true;
+}
+UNSETINPUTBUFFER(){
+	free((*inputBuffer).dataStart);
+	popPointer((*inputBuffer).dataToken);
+	ret;
+	#undef  INPUT_BUFFER_BLOCK_SIZE
+}
+SETCLIPBOARDBUFFER(){
+	(*clipboardBuffer).dataLength = 0;
+	(*clipboardBuffer).dataSize = 0;
+	(*clipboardBuffer).dataStart = NULL;
+	(*clipboardBuffer).dataToken = 0;
+	ret;
+}
+ALLOCATECLIPBOARDBUFFER(){
+	if((*clipboardBuffer).dataStart){
+		free((*clipboardBuffer).dataStart);
+		popPointer((*clipboardBuffer).dataToken);
+	}
+	(*clipboardBuffer).dataLength = length;
+	(*clipboardBuffer).dataStart = malloc((*clipboardBuffer).dataLength * sizeof(uint8));
+	(*clipboardBuffer).dataToken = pushPointer((*clipboardBuffer).dataStart, "clipboard buffer pointer", iFree);
+	if(!(*clipboardBuffer).dataStart){
+		printTitledError("memory allocation error", "could not allocate memory for clipboard buffer");
+		ret false;
+	}
+	ret true;
+}
+UBSETCLIPBOARDBUFFER(){
+	free((*clipboardBuffer).dataStart);
+	popPointer((*clipboardBuffer).dataToken);
+	ret;
+}
 
 
 
@@ -1975,7 +2076,214 @@ GETTYPEDNUMBER(){
 
 
 
-GETCHARACTERSIZE(){
+
+
+
+
+
+
+
+
+
+INSERTCHARACTER(){
+	XEvent xlibEvent;
+	bool usingXlib;
+	uint8 buffer[4];
+	uint count;
+	bool flag;
+	jmp matchInvisibleCharacter;
+	matchInvisibleCharacter: switch (*e).detail over
+		to 9: /*---*/ ret;
+		to 22: /*--*/ ret;
+		to 36: /*--*/ ret;
+		to 91: /*--*/ ret;
+		to 104: /*-*/ ret;
+		to 119: /*-*/ ret;
+		off: /*----*/ jmp matchCharacter;
+	end
+	matchCharacter:{
+		xlibEvent.xkey.type = (*e).response_type & ~b(10000000);
+		xlibEvent.xkey.send_event = false;
+		xlibEvent.xkey.display = display;
+		xlibEvent.xkey.window = (*e).event;
+		xlibEvent.xkey.root = (*e).root;
+		xlibEvent.xkey.subwindow = (*e).child;
+		xlibEvent.xkey.time = (*e).time;
+		xlibEvent.xkey.x = (*e).event_x;
+		xlibEvent.xkey.y = (*e).event_y;
+		xlibEvent.xkey.x_root = (*e).root_x;
+		xlibEvent.xkey.y_root = (*e).root_y;
+		xlibEvent.xkey.state = (*e).state;
+		xlibEvent.xkey.keycode = (*e).detail;
+		xlibEvent.xkey.same_screen = (*e).same_screen;
+		if(!XFilterEvent(&xlibEvent, (*screen).root)){
+			usingXlib = false;
+			jmp lookupCharacter;
+		}
+		XSetEventQueueOwner(display, XlibOwnsEventQueue);
+		jmp xlibEventLoop;
+	}
+	xlibEventLoop:{
+		if(XPending(display)){
+			XNextEvent(display, &xlibEvent);
+			jmp switchXlibEvent;
+		}
+		xlibEvent.type = NoEventMask;
+		jmp switchXlibEvent;
+	}
+	switchXlibEvent: switch xlibEvent.type over
+		to KeyPress:{
+			if(!XFilterEvent(&xlibEvent, (*screen).root)){
+				usingXlib = true;
+				jmp lookupCharacter;
+			}
+			jmp xlibEventLoop;
+		}
+		off:{
+			XSetEventQueueOwner(display, XCBOwnsEventQueue);
+			ret;
+		}
+	end
+	lookupCharacter:{
+		if(!(count = Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL))){
+			ret;
+		}
+		if(!resizeInputBuffer(inputBuffer, count)){
+			ret;
+		}
+		switch inputMode over
+			to NORMAL_INPUT_MODE: /*-*/ jmp normalMode;
+			to INSERT_INPUT_MODE: /*-*/ jmp insertMode;
+			off: /*------------------*/ ret;
+		end
+	}
+	normalMode:{
+		if((*inputBuffer).selectedDataCurrent){
+			removeSelected(inputBuffer);
+		}
+		if((*inputBuffer).dataCurrent == (*inputBuffer).dataStart + (*inputBuffer).dataLength){
+			flag = true;
+			jmp addCharacter;
+		}
+		shiftRightwards(inputBuffer, count);
+		flag = false;
+		jmp addCharacter;
+	}
+	insertMode:{
+		uint length;
+		if((*inputBuffer).selectedDataCurrent){
+			jmp normalMode;
+		}
+		if((*inputBuffer).dataCurrent == (*inputBuffer).dataStart + (*inputBuffer).dataLength){
+			flag = true;
+			jmp addCharacter;
+		}
+		length = getCharacterLength(RIGHT_DIRECTION, (*inputBuffer).dataCurrent);
+		if(count < length){
+			shiftLeftwards(inputBuffer, length - count);
+		}elif(count > length){
+			shiftRightwards(inputBuffer, count - length);
+		}
+		(*inputBuffer).dataLength -= length;
+		flag = false;
+		jmp addCharacter;
+	}
+	addCharacter:{
+		switch count over
+			fallthrough4: to 4: *((*inputBuffer).dataCurrent + 3) = *(buffer + 3); jmp fallthrough3;
+			fallthrough3: to 3: *((*inputBuffer).dataCurrent + 2) = *(buffer + 2); jmp fallthrough2;
+			fallthrough2: to 2: *((*inputBuffer).dataCurrent + 1) = *(buffer + 1); jmp fallthrough1;
+			fallthrough1: to 1: *((*inputBuffer).dataCurrent + 0) = *(buffer + 0); brk; jmp fallthrough4;
+		end
+		(*inputBuffer).dataCurrent += count;
+		(*inputBuffer).dataLength += count;
+		if(flag){
+			*(*inputBuffer).dataCurrent = '\0';
+		}
+		currentSelectedResult = -1;
+		getResults(inputBuffer);
+		updateWindow();
+		if(usingXlib){
+			jmp xlibEventLoop;
+		}
+		ret;
+	}
+}
+SHIFTLEFTWARDS(){
+	uint8 *current = (*inputBuffer).dataCurrent + distance;
+	jmp loop;
+	loop:{
+		*(current - distance) = *current;
+		if(*current){
+			inc current;
+			jmp loop;
+		}
+		ret;
+	}
+}
+SHIFTRIGHTWARDS(){
+	uint8 *current = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
+	uint8 *const start = (*inputBuffer).dataCurrent;
+	jmp loop;
+	loop:{
+		if(current >= start){
+			*(current + distance) = *current;
+			dec current;
+			jmp loop;
+		}
+		ret;
+	}
+}
+CHANGEMODE(){
+	switch inputMode over
+		to NORMAL_INPUT_MODE: /*-*/ inputMode = INSERT_INPUT_MODE; /*-*/ ret;
+		to INSERT_INPUT_MODE: /*-*/ inputMode = NORMAL_INPUT_MODE; /*-*/ ret;
+		off: /*------------------*/ /*--------------------------------*/ ret;
+	end
+}
+GOTOSTART(){
+	(*inputBuffer).dataCurrent = (*inputBuffer).dataStart;
+	(*inputBuffer).selectedDataCurrent = NULL;
+	ret;
+}
+GOTOEND(){
+	(*inputBuffer).dataCurrent = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
+	(*inputBuffer).selectedDataCurrent = NULL;
+	ret;
+}
+GOTOLEFT(){
+	if((*inputBuffer).selectedDataCurrent){
+		(*inputBuffer).dataCurrent = (*inputBuffer).selectedDataCurrent;
+		(*inputBuffer).selectedDataCurrent = NULL;
+		ret;
+	}
+	(*inputBuffer).selectedDataCurrent = NULL;
+	if((*inputBuffer).dataCurrent == (*inputBuffer).dataStart){
+		ret;
+	}
+	switch matchLength over
+		to CHARACTER_MATCH_LENGTH: /*-*/ (*inputBuffer).dataCurrent -= getCharacterLength(LEFT_DIRECTION, (*inputBuffer).dataCurrent - 1); /*---------*/ ret;
+		to WORD_MATCH_LENGTH: /*------*/ (*inputBuffer).dataCurrent -= getWordLength(inputBuffer, LEFT_DIRECTION, (*inputBuffer).dataCurrent - 1); /*-*/ ret;
+		off: /*-----------------------*/ /*-----------------------------------------------------------------------------------------------------------*/ ret;
+	end
+}
+GOTORIGHT(){
+	if((*inputBuffer).selectedDataCurrent){
+		(*inputBuffer).dataCurrent = (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength;
+		(*inputBuffer).selectedDataCurrent = NULL;
+		ret;
+	}
+	(*inputBuffer).selectedDataCurrent = NULL;
+	if((*inputBuffer).dataCurrent == (*inputBuffer).dataStart + (*inputBuffer).dataLength){
+		ret;
+	}
+	switch matchLength over
+		to CHARACTER_MATCH_LENGTH: /*-*/ (*inputBuffer).dataCurrent += getCharacterLength(RIGHT_DIRECTION, (*inputBuffer).dataCurrent); /*---------*/ ret;
+		to WORD_MATCH_LENGTH: /*------*/ (*inputBuffer).dataCurrent += getWordLength(inputBuffer, RIGHT_DIRECTION, (*inputBuffer).dataCurrent); /*-*/ ret;
+		off: /*-----------------------*/ /*--------------------------------------------------------------------------------------------------------*/ ret;
+	end
+}
+GETCHARACTERLENGTH(){
 	if(*p < b(10000000)){
 		ret 1 * sizeof(uint8);
 	}
@@ -2002,16 +2310,20 @@ GETCHARACTERSIZE(){
 	}
 	ret 0 * sizeof(uint8);
 }
-GETWORDSIZE(){
-	const uint8 *current = p;
+GETWORDLENGTH(){
+	const uint8 *current;
 	bool isSpecial;
 	bool isWhitespace;
 	bool isInvisible;
 	int nextOffset;
 	uint8 *wall;
+	if(!(*inputBuffer).dataStart){
+		ret 0;
+	}
 	jmp getCharacterTypes;
 	getCharacterTypes:{
 		const uint8 c = *p;
+		current = p;
 		isSpecial = (c >= 33 and c <= 47) or (c >= 58 and c <= 64) or (c >= 91 and c <= 94) or c == 96 or (c >= 123 and c <= 126);
 		isWhitespace = (c >= 9 and c <= 13) or c == 32;
 		isInvisible = (c >= 1 and c <= 8) or (c >= 14 and c <= 31) or c == 127;
@@ -2019,14 +2331,14 @@ GETWORDSIZE(){
 			nextOffset = -1;
 		}else{
 			nextOffset = 1;
-			wall = inputForeheadStart + inputForeheadSize;
+			wall = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
 		}
 		jmp matchCharacterToTypeLoop;
 	}
 	matchCharacterToTypeLoop:{
 		bool condition;
 		if(direction == LEFT_DIRECTION){
-			condition = current >= inputForeheadStart;
+			condition = current >= (*inputBuffer).dataStart;
 		}else{
 			condition = current < wall;
 		}
@@ -2060,235 +2372,137 @@ GETWORDSIZE(){
 		ret current - p;
 	}
 }
-SHIFTLEFTWARDS(){
-	uint8 *current = inputForeheadCurrent + distance;
-	jmp loop;
-	loop:{
-		*(current - distance) = *current;
-		if(*current){
-			inc current;
-			jmp loop;
-		}
-		ret;
-	}
-}
-SHIFTRIGHTWARDS(){
-	uint8 *current = inputForeheadStart + inputForeheadSize;
-	jmp loop;
-	loop:{
-		if(current >= inputForeheadCurrent){
-			*(current + distance) = *current;
-			dec current;
-			jmp loop;
-		}
-		ret;
-	}
-}
-CHANGEMODE(){
-	switch inputMode over
-		to NORMAL_INPUT_MODE: /*-*/ inputMode = INSERT_INPUT_MODE; /*-*/ ret;
-		to INSERT_INPUT_MODE: /*-*/ inputMode = NORMAL_INPUT_MODE; /*-*/ ret;
-		off: /*------------------*/ /*--------------------------------*/ ret;
-	end
-}
-INSERTCHARACTER(){
-	bool flag;
-	if(!count){
-		ret;
-	}
-	switch inputMode over
-		to NORMAL_INPUT_MODE: /*-*/ jmp normalMode;
-		to INSERT_INPUT_MODE: /*-*/ jmp insertMode;
-		off: /*------------------*/ ret;
-	end
-	normalMode:{
-		if(selectedCurrent){
-			removeSelected();
-		}
-		if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-			flag = true;
-			jmp addCharacter;
-		}
-		shiftRightwards(count);
-		flag = false;
-		jmp addCharacter;
-	}
-	insertMode:{
-		uint size;
-		if(selectedCurrent){
-			jmp normalMode;
-		}
-		if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-			flag = true;
-			jmp addCharacter;
-		}
-		size = getCharacterSize(RIGHT_DIRECTION, inputForeheadCurrent);
-		if(count < size){
-			shiftLeftwards(size - count);
-		}elif(count > size){
-			shiftRightwards(count - size);
-		}
-		inputForeheadSize -= size;
-		flag = false;
-		jmp addCharacter;
-	}
-	addCharacter:{
-		switch count over
-			to 1:{
-				*(inputForeheadCurrent + 0) = *(buffer + 0);
-				brk;
-			}
-			to 2:{
-				*(inputForeheadCurrent + 0) = *(buffer + 0);
-				*(inputForeheadCurrent + 1) = *(buffer + 1);
-				brk;
-			}
-			to 3:{
-				*(inputForeheadCurrent + 0) = *(buffer + 0);
-				*(inputForeheadCurrent + 1) = *(buffer + 1);
-				*(inputForeheadCurrent + 2) = *(buffer + 2);
-				brk;
-			}
-			to 4:{
-				*(inputForeheadCurrent + 0) = *(buffer + 0);
-				*(inputForeheadCurrent + 1) = *(buffer + 1);
-				*(inputForeheadCurrent + 2) = *(buffer + 2);
-				*(inputForeheadCurrent + 3) = *(buffer + 3);
-				brk;
-			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*!*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SELECTTEXT(){
+	uint length;
+	if(direction == LEFT_DIRECTION){
+		switch matchLength over
+			to CHARACTER_MATCH_LENGTH: /*-*/ length = getCharacterLength(direction, (*inputBuffer).dataCurrent - 1); /*---------*/ brk;
+			to WORD_MATCH_LENGTH: /*------*/ length = getWordLength(inputBuffer, direction, (*inputBuffer).dataCurrent - 1); /*-*/ brk;
+			off: /*-----------------------*/ /*---------------------------------------------------------------------------------*/ ret;
 		end
-		inputForeheadCurrent += count;
-		inputForeheadSize += count;
-		if(flag){
-			*inputForeheadCurrent = '\0';
+		if(!(*inputBuffer).selectedDataCurrent){
+			if((*inputBuffer).dataCurrent > (*inputBuffer).dataStart){
+				(*inputBuffer).dataCurrent -= length;
+				(*inputBuffer).selectedDataCurrent = (*inputBuffer).dataCurrent;
+				(*inputBuffer).selectedDataLength = length;
+			}
+			ret;
 		}
-		currentSelectedResult = -1;
-		ret;
-	}
-}
-GOTOLEFT(){
-	if(selectedCurrent){
-		inputForeheadCurrent = selectedCurrent;
-		selectedCurrent = NULL;
-		ret;
-	}
-	selectedCurrent = NULL;
-	if(inputForeheadCurrent == inputForeheadStart){
-		ret;
-	}
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ inputForeheadCurrent -= getCharacterSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*-*/ ret;
-		to WORD_MATCH_SIZE: /*------*/ inputForeheadCurrent -= getWordSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*------*/ ret;
-		off: /*---------------------*/ /*-------------------------------------------------------------------------------------*/ ret;
-	end
-}
-GOTORIGHT(){
-	if(selectedCurrent){
-		inputForeheadCurrent = selectedCurrent + selectedSize;
-		selectedCurrent = NULL;
-		ret;
-	}
-	selectedCurrent = NULL;
-	if(inputForeheadCurrent == inputForeheadStart + inputForeheadSize){
-		ret;
-	}
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ inputForeheadCurrent += getCharacterSize(RIGHT_DIRECTION, inputForeheadCurrent); /*-*/ ret;
-		to WORD_MATCH_SIZE: /*------*/ inputForeheadCurrent += getWordSize(RIGHT_DIRECTION, inputForeheadCurrent); /*------*/ ret;
-		off: /*---------------------*/ /*----------------------------------------------------------------------------------*/ ret;
-	end
-}
-GOTOSTART(){
-	selectedCurrent = NULL;
-	inputForeheadCurrent = inputForeheadStart;
-	ret;
-}
-GOTOEND(){
-	selectedCurrent = NULL;
-	inputForeheadCurrent = inputForeheadStart + inputForeheadSize;
-	ret;
-}
-SELECTLEFT(){
-	uint size;
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*-*/ brk;
-		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(LEFT_DIRECTION, inputForeheadCurrent - 1); /*------*/ brk;
-		off: /*---------------------*/ /*--------------------------------------------------------------------*/ ret;
-	end
-	if(!selectedCurrent){
-		if(inputForeheadCurrent > inputForeheadStart){
-			inputForeheadCurrent -= size;
-			selectedCurrent = inputForeheadCurrent;
-			selectedSize = size;
+		if((*inputBuffer).dataCurrent == (*inputBuffer).selectedDataCurrent){
+			if((*inputBuffer).dataCurrent > (*inputBuffer).dataStart){
+				(*inputBuffer).dataCurrent -= length;
+				(*inputBuffer).selectedDataCurrent -= length;
+				(*inputBuffer).selectedDataLength += length;
+			}
+			ret;
 		}
-		ret;
-	}
-	if(inputForeheadCurrent == selectedCurrent){
-		if(inputForeheadCurrent > inputForeheadStart){
-			inputForeheadCurrent -= size;
-			selectedCurrent -= size;
-			selectedSize += size;
+		(*inputBuffer).dataCurrent -= length;
+	}else{
+		switch matchLength over
+			to CHARACTER_MATCH_LENGTH: /*-*/ length = getCharacterLength(direction, (*inputBuffer).dataCurrent); /*---------*/ brk;
+			to WORD_MATCH_LENGTH: /*------*/ length = getWordLength(inputBuffer, direction, (*inputBuffer).dataCurrent); /*-*/ brk;
+			off: /*-----------------------*/ /*-----------------------------------------------------------------------------*/ ret;
+		end
+		if(!(*inputBuffer).selectedDataCurrent){
+			if((*inputBuffer).dataCurrent < (*inputBuffer).dataStart + (*inputBuffer).dataLength){
+				(*inputBuffer).selectedDataCurrent = (*inputBuffer).dataCurrent;
+				(*inputBuffer).selectedDataLength = length;
+				(*inputBuffer).dataCurrent += length;
+			}
+			ret;
 		}
-		ret;
-	}
-	inputForeheadCurrent -= size;
-	selectedSize -= size;
-	if(!selectedSize){
-		selectedCurrent = NULL;
-	}
-	ret;
-}
-SELECTRIGHT(){
-	uint size;
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(RIGHT_DIRECTION, inputForeheadCurrent); /*-*/ brk;
-		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(RIGHT_DIRECTION, inputForeheadCurrent); /*------*/ brk;
-		off: /*---------------------*/ /*-----------------------------------------------------------------*/ ret;
-	end
-	if(!selectedCurrent){
-		if(inputForeheadCurrent < inputForeheadStart + inputForeheadSize){
-			selectedCurrent = inputForeheadCurrent;
-			selectedSize = size;
-			inputForeheadCurrent += size;
+		if((*inputBuffer).dataCurrent > (*inputBuffer).selectedDataCurrent){
+			if((*inputBuffer).dataCurrent < (*inputBuffer).dataStart + (*inputBuffer).dataLength){
+				(*inputBuffer).selectedDataLength += length;
+				(*inputBuffer).dataCurrent += length;
+			}
+			ret;
 		}
-		ret;
+		(*inputBuffer).dataCurrent += length;
+		(*inputBuffer).selectedDataCurrent += length;
 	}
-	if(inputForeheadCurrent > selectedCurrent){
-		if(inputForeheadCurrent < inputForeheadStart + inputForeheadSize){
-			selectedSize += size;
-			inputForeheadCurrent += size;
-		}
-		ret;
-	}
-	inputForeheadCurrent += size;
-	selectedCurrent += size;
-	selectedSize -= size;
-	if(!selectedSize){
-		selectedCurrent = NULL;
+	(*inputBuffer).selectedDataLength -= length;
+	if(!(*inputBuffer).selectedDataLength){
+		(*inputBuffer).selectedDataCurrent = NULL;
 	}
 	ret;
 }
 SELECTSTART(){
-	if(inputForeheadSize){
-		selectedCurrent = inputForeheadStart;
-		selectedSize = inputForeheadCurrent - inputForeheadStart;
-		inputForeheadCurrent = inputForeheadStart;
+	if((*inputBuffer).dataLength){
+		(*inputBuffer).selectedDataCurrent = (*inputBuffer).dataStart;
+		(*inputBuffer).selectedDataLength = (*inputBuffer).dataCurrent - (*inputBuffer).dataStart;
+		(*inputBuffer).dataCurrent = (*inputBuffer).dataStart;
 	}
 	ret;
 }
 SELECTEND(){
-	if(inputForeheadSize){
-		selectedCurrent = inputForeheadCurrent;
-		selectedSize = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
-		inputForeheadCurrent = inputForeheadStart + inputForeheadSize;
+	if((*inputBuffer).dataLength){
+		(*inputBuffer).selectedDataCurrent = (*inputBuffer).dataCurrent;
+		(*inputBuffer).selectedDataLength = (*inputBuffer).dataLength - ((*inputBuffer).dataCurrent - (*inputBuffer).dataStart);
+		(*inputBuffer).dataCurrent = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
 	}
 	ret;
 }
 SELECTALL(){
-	if(inputForeheadSize){
-		selectedCurrent = inputForeheadStart;
-		selectedSize = inputForeheadSize;
-		inputForeheadCurrent = inputForeheadStart + inputForeheadSize;
+	if((*inputBuffer).dataLength){
+		(*inputBuffer).selectedDataCurrent = (*inputBuffer).dataStart;
+		(*inputBuffer).selectedDataLength = (*inputBuffer).dataLength;
+		(*inputBuffer).dataCurrent = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
 	}
 	ret;
 }
@@ -2296,11 +2510,11 @@ TOCASE(){
 	uint8 *current;
 	uint8 *wall;
 	int offset;
-	if(!selectedCurrent){
+	if(!(*inputBuffer).selectedDataCurrent){
 		ret;
 	}
-	current = selectedCurrent;
-	wall = current + selectedSize;
+	current = (*inputBuffer).selectedDataCurrent;
+	wall = current + (*inputBuffer).selectedDataLength;
 	if(newCase == UPPER_CASE){
 		offset = -32;
 	}else{
@@ -2323,10 +2537,13 @@ TOCASE(){
 	}
 }
 COPYSELECTED(){
-	const uint8 *current = selectedCurrent;
-	const uint8 *const wall = current + selectedSize;
-	uint8 *bufferCurrent = inputClipboardStart;
-	inputClipboardSize = selectedSize;
+	const uint8 *current = (*inputBuffer).selectedDataCurrent;
+	const uint8 *const wall = current + (*inputBuffer).selectedDataLength;
+	uint8 *bufferCurrent;
+	if(!allocateClipboardBuffer(&clipboardBuffer, (*inputBuffer).selectedDataLength)){
+		ret;
+	}
+	bufferCurrent = clipboardBuffer.dataStart;
 	jmp copySelectedLoop;
 	copySelectedLoop:{
 		*bufferCurrent = *current;
@@ -2338,30 +2555,37 @@ COPYSELECTED(){
 	}
 }
 REMOVESELECTED(){
-	inputForeheadCurrent = selectedCurrent;
-	shiftLeftwards(selectedSize);
-	inputForeheadSize -= selectedSize;
-	selectedCurrent = NULL;
+	(*inputBuffer).dataCurrent = (*inputBuffer).selectedDataCurrent;
+	shiftLeftwards(inputBuffer, (*inputBuffer).selectedDataLength);
+	(*inputBuffer).dataLength -= (*inputBuffer).selectedDataLength;
+	(*inputBuffer).selectedDataCurrent = NULL;
 	currentSelectedResult = -1;
 	ret;
 }
 PASTECLIPBOARD(){
+
+
+
+	/*! update input buffer */
+
+
+
 	uint8 *current;
 	uint8 *wall;
-	if(!inputClipboardSize){
+	if(!clipboardBuffer.dataLength){
 		ret;
 	}
-	if(selectedCurrent){
-		removeSelected();
+	if((*inputBuffer).selectedDataCurrent){
+		removeSelected(inputBuffer);
 	}
-	shiftRightwards(inputClipboardSize);
-	current = inputClipboardStart;
-	wall = current + inputClipboardSize;
-	inputForeheadSize += inputClipboardSize;
+	shiftRightwards(inputBuffer, clipboardBuffer.dataLength);
+	current = clipboardBuffer.dataStart;
+	wall = current + clipboardBuffer.dataLength;
+	(*inputBuffer).dataLength += clipboardBuffer.dataLength;
 	jmp pasteClipboardLoop;
 	pasteClipboardLoop:{
-		*inputForeheadCurrent = *current;
-		inc inputForeheadCurrent;
+		*(*inputBuffer).dataCurrent = *current;
+		inc (*inputBuffer).dataCurrent;
 		if(inc current < wall){
 			jmp pasteClipboardLoop;
 		}
@@ -2369,54 +2593,55 @@ PASTECLIPBOARD(){
 	}
 }
 REMOVETEXT(){
-	uint size;
+	uint length;
 	uint8 *wall;
-	int sizeOffset;
-	if(selectedCurrent){
-		removeSelected();
+	int lengthOffset;
+	if((*inputBuffer).selectedDataCurrent){
+		removeSelected(inputBuffer);
 		ret;
 	}
 	if(direction == LEFT_DIRECTION){
-		wall = inputForeheadStart;
-		sizeOffset = -1;
+		wall = (*inputBuffer).dataStart;
+		lengthOffset = -1;
 	}else{
-		wall = inputForeheadStart + inputForeheadSize;
-		sizeOffset = 0;
+		wall = (*inputBuffer).dataStart + (*inputBuffer).dataLength;
+		lengthOffset = 0;
 	}
-	if(inputForeheadCurrent == wall){
+	if((*inputBuffer).dataCurrent == wall){
 		ret;
 	}
-	switch matchSize over
-		to CHARACTER_MATCH_SIZE: /*-*/ size = getCharacterSize(direction, inputForeheadCurrent + sizeOffset); /*-*/ brk;
-		to WORD_MATCH_SIZE: /*------*/ size = getWordSize(direction, inputForeheadCurrent + sizeOffset); /*------*/ brk;
-		off: /*---------------------*/ /*------------------------------------------------------------------------*/ ret;
+	switch matchLength over
+		to CHARACTER_MATCH_LENGTH: /*-*/ length = getCharacterLength(direction, (*inputBuffer).dataCurrent + lengthOffset); /*---------*/ brk;
+		to WORD_MATCH_LENGTH: /*------*/ length = getWordLength(inputBuffer, direction, (*inputBuffer).dataCurrent + lengthOffset); /*-*/ brk;
+		off: /*-----------------------*/ /*--------------------------------------------------------------------------------------------*/ ret;
 	end
 	if(direction == LEFT_DIRECTION){
-		inputForeheadCurrent -= size;
+		(*inputBuffer).dataCurrent -= length;
 	}
-	shiftLeftwards(size);
-	inputForeheadSize -= size;
+	shiftLeftwards(inputBuffer, length);
+	(*inputBuffer).dataLength -= length;
 	currentSelectedResult = -1;
 	ret;
 }
 GETRESULTS(){
 	/*! {
-		const uint amountPost = inputForeheadSize - (inputForeheadCurrent - inputForeheadStart);
-		const uint amountPre = inputForeheadSize - amountPost;
-		const char *const dotsPre = selectedCurrent and selectedCurrent >= inputForeheadStart + 3? "..." : selectedCurrent and selectedCurrent >= inputForeheadStart + 2? ".." : selectedCurrent and selectedCurrent >= inputForeheadStart + 1? "." : "";
-		const uint selectedLength = selectedCurrent? selectedSize : lengthof("<NONE>");
-		const char *const selected = selectedCurrent? (char *)selectedCurrent : "<NONE>";
-		const char *const dotsPost = selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 2? "..." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 1? ".." : selectedCurrent and selectedCurrent + selectedSize < inputForeheadStart + inputForeheadSize - 0? "." : "";
-		const char *const buffer = inputClipboardSize? (char *)inputClipboardStart : "";
-		const uint bufferLength = inputClipboardSize? inputClipboardSize : lengthof("");
-		const char *const isASCII = isASCIIString(inputForeheadStart)? "" : " (non-ascii)";
+		const uint amountPost = (*inputBuffer).dataLength - ((*inputBuffer).dataCurrent - (*inputBuffer).dataStart);
+		const uint amountPre = (*inputBuffer).dataLength - amountPost;
+		const char *const dotsPre = (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 3? "..." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 2? ".." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent >= (*inputBuffer).dataStart + 1? "." : "";
+		const uint (*inputBuffer).selectedDataLength = (*inputBuffer).selectedDataCurrent? (*inputBuffer).selectedDataLength : lengthof("<NONE>");
+		const char *const selected = (*inputBuffer).selectedDataCurrent? (char *)(*inputBuffer).selectedDataCurrent : "<NONE>";
+		const char *const dotsPost = (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 2? "..." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 1? ".." : (*inputBuffer).selectedDataCurrent and (*inputBuffer).selectedDataCurrent + (*inputBuffer).selectedDataLength < (*inputBuffer).dataStart + (*inputBuffer).dataLength - 0? "." : "";
+		const char *const buffer = clipboardBuffer.dataLength? (char *)clipboardBuffer.dataStart : "";
+		const uint bufferLength = clipboardBuffer.dataLength? clipboardBuffer.dataLength : lengthof("");
+		const char *const isASCII = isASCIIString((*inputBuffer).dataStart)? "" : " (non-ascii)";
 		const char *const mode = inputMode == NORMAL_INPUT_MODE? "" : " (insert)";
-		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, inputForeheadStart, amountPost, inputForeheadCurrent, dotsPre, selectedLength, selected, dotsPost, bufferLength, buffer, isASCII, mode);
+		fprintf(stdout, "▏[%.*s|%.*s] (selected: %s%.*s%s) (buffer: \'%.*s\')%s%s\n", amountPre, (*inputBuffer).dataStart, amountPost, (*inputBuffer).dataCurrent, dotsPre, (*inputBuffer).selectedDataLength, selected, dotsPost, bufferLength, buffer, isASCII, mode);
 	} */
-	getMultipleASCIIStringNodes(&asciiRoot, maximumStringAmount, (void *)inputForeheadStart);
+	getMultipleASCIIStringNodes(&asciiRoot, maximumResultAmount, (void *)(*inputBuffer).dataStart);
 	ret;
 }
 PICKRESULT(){
+	(void)inputBuffer;
 
 
 
@@ -2425,6 +2650,35 @@ PICKRESULT(){
 
 
 	ret;
+}
+LAUNCH(){
+	#define ROOT_UID /*-*/ (0)
+	uint8 *commandStart;
+	uint32 commandToken;
+	if(!(*inputBuffer).dataLength){
+		ret;
+	}
+	if(geteuid() != ROOT_UID){
+		exec((*inputBuffer).dataStart);
+		ret;
+	}
+	commandStart = malloc((lengthof("su $(logname) -c \'") + (*inputBuffer).dataLength + lengthof("\'") + 1) * sizeof(uint8));
+	commandToken = pushPointer(commandStart, "command to execute pointer", iFree);
+	if(commandStart){
+		uint8 *current = commandStart;
+		copyMemory("su $(logname) -c \'", current, lengthof("su $(logname) -c \'"));
+		current += lengthof("su $(logname) -c \'");
+		copyMemory((*inputBuffer).dataStart, current, (*inputBuffer).dataLength);
+		current += (*inputBuffer).dataLength;
+		copyMemory("\'", current, lengthof("\'"));
+		current += lengthof("\'");
+		*current = '\0';
+		exec(commandStart);
+		free(commandStart);
+		popPointer(commandToken);
+	}
+	ret;
+	#undef  ROOT_UID
 }
 
 
@@ -3342,22 +3596,23 @@ int main(int argumentAmount, const char *const *argument){
 
 
 	getThing:{
-		inputForeheadCurrent = inputForeheadStart;
-		inputForeheadSize = 0;
-		*inputForeheadStart = '\0';
-		selectedCurrent = NULL;
-		inputClipboardSize = 0;
+
+
+
+		setInputBuffer(&inputBuffer);
+		setClipboardBuffer(&clipboardBuffer);
+
+		/*! unsetInputBuffer(&inputBuffer); */
+		/*! unsetClipboardBuffer(&clipboardBuffer); */
+
+
+
 		inputMode = NORMAL_INPUT_MODE;
 		currentSelectedResult = -1;
 
 
 
-		maximumStringAmount = 10;
-		resultAllowCircularNavigation = true;
-
-
-
-		getResults();
+		getResults(&inputBuffer);
 		mapWindow();
 
 
@@ -3463,70 +3718,8 @@ int main(int argumentAmount, const char *const *argument){
 		if(getNextShortcut(&keycodeShortcut, (*e).detail, (*e).state & b(11111111), &keyPressNextOffset)){
 			jmp matchCommandPress;
 		}
-		{
-			XEvent xlibEvent;
-			bool usingXlib;
-			switch (*e).detail over
-				to 9: /*---*/ jmp eventLoop;
-				to 22: /*--*/ jmp eventLoop;
-				to 36: /*--*/ jmp eventLoop;
-				to 91: /*--*/ jmp eventLoop;
-				to 104: /*-*/ jmp eventLoop;
-				to 119: /*-*/ jmp eventLoop;
-				off: /*----*/ brk;
-			end
-			xlibEvent.xkey.type = (*e).response_type & ~b(10000000);
-			xlibEvent.xkey.send_event = false;
-			xlibEvent.xkey.display = display;
-			xlibEvent.xkey.window = (*e).event;
-			xlibEvent.xkey.root = (*e).root;
-			xlibEvent.xkey.subwindow = (*e).child;
-			xlibEvent.xkey.time = (*e).time;
-			xlibEvent.xkey.x = (*e).event_x;
-			xlibEvent.xkey.y = (*e).event_y;
-			xlibEvent.xkey.x_root = (*e).root_x;
-			xlibEvent.xkey.y_root = (*e).root_y;
-			xlibEvent.xkey.state = (*e).state;
-			xlibEvent.xkey.keycode = (*e).detail;
-			xlibEvent.xkey.same_screen = (*e).same_screen;
-			if(!XFilterEvent(&xlibEvent, (*screen).root)){
-				usingXlib = false;
-				jmp insertCharacter;
-			}
-			XSetEventQueueOwner(display, XlibOwnsEventQueue);
-			jmp xlibEventLoop;
-			xlibEventLoop:{
-				if(XPending(display)){
-					XNextEvent(display, &xlibEvent);
-					jmp switchXlibEvent;
-				}
-				xlibEvent.type = NoEventMask;
-				jmp switchXlibEvent;
-			}
-			switchXlibEvent: switch xlibEvent.type over
-				to KeyPress:{
-					if(!XFilterEvent(&xlibEvent, (*screen).root)){
-						usingXlib = true;
-						jmp insertCharacter;
-					}
-					jmp xlibEventLoop;
-				}
-				off:{
-					XSetEventQueueOwner(display, XCBOwnsEventQueue);
-					jmp eventLoop;
-				}
-			end
-			insertCharacter:{
-				uint8 buffer[4];
-				insertCharacter(Xutf8LookupString(ic, &xlibEvent.xkey, (void *)buffer, sizeof(buffer), NULL, NULL), buffer);
-				getResults();
-				updateWindow();
-				if(usingXlib){
-					jmp xlibEventLoop;
-				}
-				jmp eventLoop;
-			}
-		}
+		insertCharacter(&inputBuffer, e);
+		jmp eventLoop;
 		#undef  e
 	}
 	keyReleaseEvent:{
@@ -4885,18 +5078,8 @@ SETCONFIGVARIABLES(){
 	windowCirclePixmap = XCB_NONE;
 	whichMonitor = NONE_WHICH_MONITOR;
 	font = XCB_NONE;
-
-
-
-	/*!*/
-
-	maximumStringAmount = 0;
+	maximumResultAmount = 0;
 	resultAllowCircularNavigation = false;
-
-	/*!*/
-
-
-
 	ret;
 }
 SETELEMENTPREFERENCES(){
@@ -5909,6 +6092,8 @@ READCONFIG(){
 				to RESULT_CONTENT_SELECTED_BACKGROUND_VARIABLE: /*--*/ applySubinstruction(resultContentSelectedBackground, Set); /*--*/ jmp assessSubinstruction;
 				to WHICH_MONITOR_VARIABLE: /*-----------------------*/ applySubinstruction(whichMonitor, Set); /*---------------------*/ jmp assessSubinstruction;
 				to FONT_VARIABLE: /*--------------------------------*/ applySubinstruction(font, Set); /*-----------------------------*/ jmp assessSubinstruction;
+				to MAXIMUM_RESULT_AMOUNT_VARIABLE: /*---------------*/ applySubinstruction(maximumResultAmount, Set); /*--------------*/ jmp assessSubinstruction;
+				to RESULT_ALLOW_CIRCULAR_NAVIGATION_VARIABLE: /*----*/ applySubinstruction(resultAllowCircularNavigation, Set); /*----*/ jmp assessSubinstruction;
 				off: /*---------------------------------------------*/ /*-------------------------------------------------------------*/ brk;
 			end
 		}
@@ -6326,6 +6511,14 @@ READCONFIG(){
 						}
 					}
 					xcb_change_gc(connection, gc, XCB_GC_FONT, &font);
+					jmp getStatementStart;
+				}
+				to MAXIMUM_RESULT_AMOUNT_VARIABLE:{
+					maximumResultAmount = integer0Return;
+					jmp getStatementStart;
+				}
+				to RESULT_ALLOW_CIRCULAR_NAVIGATION_VARIABLE:{
+					resultAllowCircularNavigation = name1Return;
 					jmp getStatementStart;
 				}
 				off:{
@@ -7518,38 +7711,38 @@ MATCHCOMMAND(){
 		jmp emergencyExit;
 	}
 	toNextLetterCommand:{
-		gotoRight(CHARACTER_MATCH_SIZE);
-		getResults();
+		gotoRight(&inputBuffer, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toPreviousLetterCommand:{
-		gotoLeft(CHARACTER_MATCH_SIZE);
-		getResults();
+		gotoLeft(&inputBuffer, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toNextWordCommand:{
-		gotoRight(WORD_MATCH_SIZE);
-		getResults();
+		gotoRight(&inputBuffer, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toPreviousWordCommand:{
-		gotoLeft(WORD_MATCH_SIZE);
-		getResults();
+		gotoLeft(&inputBuffer, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toStartOfLineCommand:{
-		gotoStart();
-		getResults();
+		gotoStart(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toEndOfLineCommand:{
-		gotoEnd();
-		getResults();
+		gotoEnd(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
@@ -7559,7 +7752,7 @@ MATCHCOMMAND(){
 		}elif(resultAllowCircularNavigation and currentSelectedResult != -1){
 			currentSelectedResult = 0;
 		}
-		getResults();
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
@@ -7569,149 +7762,127 @@ MATCHCOMMAND(){
 		}elif(currentSelectedResult == -1 or resultAllowCircularNavigation){
 			currentSelectedResult = (int)asciiRoot.stringsFoundAmount - 1;
 		}
-		getResults();
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	removeLeftLetterCommand:{
-		removeText(LEFT_DIRECTION, CHARACTER_MATCH_SIZE);
-		getResults();
+		removeText(&inputBuffer, LEFT_DIRECTION, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	removeRightLetterCommand:{
-		removeText(RIGHT_DIRECTION, CHARACTER_MATCH_SIZE);
-		getResults();
+		removeText(&inputBuffer, RIGHT_DIRECTION, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	removeLeftWordCommand:{
-		removeText(LEFT_DIRECTION, WORD_MATCH_SIZE);
-		getResults();
+		removeText(&inputBuffer, LEFT_DIRECTION, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	removeRightWordCommand:{
-		removeText(RIGHT_DIRECTION, WORD_MATCH_SIZE);
-		getResults();
+		removeText(&inputBuffer, RIGHT_DIRECTION, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectLeftLetterCommand:{
-		selectLeft(CHARACTER_MATCH_SIZE);
-		getResults();
+		selectText(&inputBuffer, LEFT_DIRECTION, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectRightLetterCommand:{
-		selectRight(CHARACTER_MATCH_SIZE);
-		getResults();
+		selectText(&inputBuffer, RIGHT_DIRECTION, CHARACTER_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectLeftWordCommand:{
-		selectLeft(WORD_MATCH_SIZE);
-		getResults();
+		selectText(&inputBuffer, LEFT_DIRECTION, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectRightWordCommand:{
-		selectRight(WORD_MATCH_SIZE);
-		getResults();
+		selectText(&inputBuffer, RIGHT_DIRECTION, WORD_MATCH_LENGTH);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectToStartOfLineCommand:{
-		selectStart();
-		getResults();
+		selectStart(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectToEndOfLineCommand:{
-		selectEnd();
-		getResults();
+		selectEnd(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	selectAllCommand:{
-		selectAll();
-		getResults();
+		selectAll(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	copySelectionCommand:{
-		if(selectedCurrent){
-			copySelected();
-			getResults();
+		if(inputBuffer.selectedDataCurrent){
+			copySelected(&inputBuffer);
+			getResults(&inputBuffer);
 			updateWindow();
 		}
 		jmp emergencyExit;
 	}
 	cutSelectionCommand:{
-		if(selectedCurrent){
-			copySelected();
-			removeSelected();
-			getResults();
+		if(inputBuffer.selectedDataCurrent){
+			copySelected(&inputBuffer);
+			removeSelected(&inputBuffer);
+			getResults(&inputBuffer);
 			updateWindow();
 		}
 		jmp emergencyExit;
 	}
 	pasteSelectionCommand:{
-		pasteClipboard();
-		getResults();
+		pasteClipboard(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	uppercaseSelectionCommand:{
-		toCase(UPPER_CASE);
-		getResults();
+		toCase(&inputBuffer, UPPER_CASE);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	lowercaseSelectionCommand:{
-		toCase(LOWER_CASE);
-		getResults();
+		toCase(&inputBuffer, LOWER_CASE);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	toggleInsertModeCommand:{
 		changeMode();
-		getResults();
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	pickResultCommand:{
-		pickResult();
-		getResults();
+		pickResult(&inputBuffer);
+		getResults(&inputBuffer);
 		updateWindow();
 		jmp emergencyExit;
 	}
 	launchCommand:{
-		#define ROOT_UID /*-*/ (0)
+		launch(&inputBuffer);
 		commandReturned = EXIT_SWITCH_COMMAND;
-		if(inputForeheadSize){
-			if(geteuid() == ROOT_UID){
-				void *const commandStart = malloc((lengthof("su $(logname) -c \'") + inputForeheadSize + lengthof("\'") + 1) * sizeof(uint8));
-				uint32 commandToken = pushPointer(commandStart, "command to execute pointer", iFree);
-				if(commandStart){
-					uint8 *current = commandStart;
-					copyMemory("su $(logname) -c \'", current, lengthof("su $(logname) -c \'"));
-					current += lengthof("su $(logname) -c \'");
-					copyMemory(inputForeheadStart, current, inputForeheadSize);
-					current += inputForeheadSize;
-					copyMemory("\'", current, lengthof("\'"));
-					current += lengthof("\'");
-					*current = '\0';
-					exec(commandStart);
-					free(commandStart);
-					popPointer(commandToken);
-				}
-				jmp emergencyExit;
-			}
-			exec((void *)inputForeheadStart);
-		}
 		jmp emergencyExit;
-		#undef  ROOT_UID
 	}
 	restartCommand:{
 		commandReturned = RESTART_SWITCH_COMMAND;
@@ -8538,7 +8709,6 @@ EXITCOMMAND(){
 	freeConfigVariables();
 	ungrabShortcuts();
 	freeMonitors();
-	xcb_ungrab_keyboard(connection, getTimestamp());
 	if(ic){
 		XDestroyIC(ic);
 	}
@@ -8546,6 +8716,7 @@ EXITCOMMAND(){
 		XCloseIM(im);
 	}
 	if(connectionToken){
+		xcb_ungrab_keyboard(connection, getTimestamp());
 		xcb_disconnect(connection);
 		popPointer(connectionToken);
 	}
