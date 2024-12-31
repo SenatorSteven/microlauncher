@@ -101,7 +101,7 @@ SOFTWARE. */
 /*!}*/
 
 /*!defines:{*/
-	#define DEBUG /*----------------------------------------*/ (true)
+	#define DEBUG /*----------------------------------------*/ (false)
 
 	#define PROGRAM_NAME /*---------------------------------*/ "microlauncher"
 
@@ -1274,10 +1274,8 @@ SOFTWARE. */
 	#undef  getInstructionData
 	#undef  getInstruction
 
-	#if DEBUG
 	local const char *const /*------------*/ eventName[] = {"error", "unrecognized", "key press", "key release", "button press", "button release", "motion notify", "enter notify", "leave notify", "focus in", "focus out", "keymap notify", "expose", "graphics expose", "no expose", "visibility notify", "create notify", "destroy notify", "unmap notify", "map notify", "map request", "reparent notify", "configure notify", "configure request", "gravity notify", "resize request", "circulate notify", "circulate request", "property notify", "selection clear", "selection request", "selection notify", "colormap notify", "client message", "mapping notify", "generic event"};
 	local const char *const /*------------*/ randrEventName[] = {"screen change notify", "notify", "unrecognized"};
-	#endif
 /*!}*/
 
 /*!functions:{*/
@@ -1404,6 +1402,8 @@ SOFTWARE. */
 /*!}*/
 
 int main(int argumentAmount, const char *const *argument){
+	(void)eventName;
+	(void)randrEventName;
 	(void)compositeImages;
 	(void)compositeImagesOver;
 	(void)compositeImagesAnd;
