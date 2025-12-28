@@ -88,7 +88,7 @@ SOFTWARE. */
 	#include <X11/Xlib.h>
 	#include <X11/Xlib-xcb.h>
 	#include <X11/Xlocale.h>
-	#include "../headers/cold/cold.hold"
+	#include "headers/cold/cold.hold"
 /*!}*/
 
 /*!defines:{*/
